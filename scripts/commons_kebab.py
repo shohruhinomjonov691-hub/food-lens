@@ -5,8 +5,11 @@ allowlist and whose author is known, download a review thumbnail to data/kebab_c
 data/kebab_commons/candidates.csv. Nothing is accepted automatically: every candidate still goes
 through duplicate checks and a manual visual review (scripts/build_kebab_manifest.py).
 
-Usage: python scripts/commons_kebab.py
+Usage:
+  python scripts/commons_kebab.py                      # skewered + minced kebabs
+  python scripts/commons_kebab.py --pass doner --append  # döner/shawarma; keeps existing rows and thumbnails
 """
+import argparse
 import csv
 import hashlib
 import html
@@ -24,12 +27,18 @@ from food_lens.manifest import license_allowed  # noqa: E402
 
 API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "FoodLensDatasetBuilder/0.1 (+https://github.com/shohruhinomjonov691-hub)"
-ROOT_CATEGORY = "Category:Skewered kebabs"
 MAX_DEPTH = 3
-# Döner/shawarma is a different-looking dish (vertical rotisserie, wraps); text and icon
-# categories are not photos.
-EXCLUDED_CATEGORY = re.compile(r"döner|doner|shawarma|gyros|\(text\)|icons?\b|logos?\b|restaurants?\b|stands?\b",
-                               re.IGNORECASE)
+# Text, icon, logo and shop categories are not dish photos.
+_NOT_PHOTOS = r"\(text\)|icons?\b|logos?\b|restaurants?\b|stands?\b"
+PASSES = {
+    # The skewered pass leaves döner/shawarma to its own pass (so each file gets one root).
+    "skewered": (["Category:Skewered kebabs"],
+                 re.compile(_NOT_PHOTOS + r"|döner|doner|shawarma|gyros", re.IGNORECASE)),
+    # Döner pizza looks like pizza; "influenced" dishes (gyros, tacos al pastor...) and the halal
+    # snack pack (mostly chips) are other dishes.
+    "doner": (["Category:Döner kebab", "Category:Shawarma"],
+              re.compile(_NOT_PHOTOS + r"|pizza|influenced|snack pack|gyros", re.IGNORECASE)),
+}
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 MIN_SHORT_SIDE = 256  # original image
 THUMB_WIDTH = 640
@@ -64,23 +73,24 @@ def members(category, kind):
         params.update(data["continue"])
 
 
-def crawl():
-    """File titles under ROOT_CATEGORY (BFS), with the first category each was found in."""
-    files, seen, queue, skipped = {}, {ROOT_CATEGORY}, [(ROOT_CATEGORY, 0)], []
+def crawl(roots, excluded):
+    """File titles under the root categories (BFS) -> (first category found in, root)."""
+    files, seen, skipped = {}, set(roots), []
+    queue = [(root, 0, root) for root in roots]
     while queue:
-        category, depth = queue.pop(0)
+        category, depth, root = queue.pop(0)
         for m in members(category, "file"):
-            files.setdefault(m["title"], category)
+            files.setdefault(m["title"], (category, root))
         if depth < MAX_DEPTH:
             for m in members(category, "subcat"):
                 title = m["title"]
                 if title in seen:
                     continue
                 seen.add(title)
-                if EXCLUDED_CATEGORY.search(title):
+                if excluded.search(title):
                     skipped.append(title)
                     continue
-                queue.append((title, depth + 1))
+                queue.append((title, depth + 1, root))
         time.sleep(0.2)
     return files, sorted(seen), skipped
 
@@ -134,18 +144,33 @@ def download(url):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pass", dest="pass_name", choices=sorted(PASSES), default="skewered")
+    parser.add_argument("--append", action="store_true", help="keep candidates.csv rows; skip known files")
+    args = parser.parse_args()
+    roots, excluded = PASSES[args.pass_name]
     os.makedirs(os.path.join(OUT, "thumbs"), exist_ok=True)
-    files, categories, skipped = crawl()
+    path = os.path.join(OUT, "candidates.csv")
+    existing = []
+    if args.append and os.path.exists(path):
+        with open(path, newline="", encoding="utf-8") as f:
+            existing = list(csv.DictReader(f))
+        for row in existing:  # rows from the first run predate the "root" column
+            row.setdefault("root", PASSES["skewered"][0][0])
+    known = {row["title"] for row in existing}
+    files, categories, skipped = crawl(roots, excluded)
     print(f"Categories crawled: {len(categories)}; skipped: {skipped}")
-    print(f"File titles: {len(files)}", flush=True)
+    new_titles = sorted(set(files) - known)
+    print(f"File titles: {len(files)}; already known: {len(files) - len(new_titles)}; new: {len(new_titles)}", flush=True)
     rows = []
-    for page in metadata(sorted(files)):
+    for page in metadata(new_titles):
         info = page["imageinfo"][0]
         meta = info.get("extmetadata", {})
         row = {
             "pageid": page["pageid"],
             "title": page["title"],
-            "category": files[page["title"]],
+            "category": files[page["title"]][0],
+            "root": files[page["title"]][1],
             "page_url": info["descriptionurl"],
             "original_url": info["url"],
             "original_sha1": info["sha1"],
@@ -163,28 +188,37 @@ def main():
             "auto_reject": license_decision(meta, info),
         }
         if not row["auto_reject"]:
-            data = download(row["thumb_url"])
+            # Never re-download a thumbnail that is already on disk.
+            cached = [n for n in os.listdir(os.path.join(OUT, "thumbs")) if n.startswith(f"{row['pageid']}.")]
+            if cached:
+                with open(os.path.join(OUT, "thumbs", cached[0]), "rb") as f:
+                    data = f.read()
+            else:
+                data = download(row["thumb_url"])
+                time.sleep(0.3)
             fmt = sniff(data[:16])
             ext = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}.get(fmt, ".bin")
             name = f"{row['pageid']}{ext}"
-            with open(os.path.join(OUT, "thumbs", name), "wb") as f:
-                f.write(data)
+            if not cached:
+                with open(os.path.join(OUT, "thumbs", name), "wb") as f:
+                    f.write(data)
             row.update(thumb_file=name, thumb_sha256=hashlib.sha256(data).hexdigest(), thumb_format=fmt)
             try:
                 row["phash"] = f"{phash64(load_rgb(data)):016x}"
             except Exception as exc:
                 row["auto_reject"] = f"decode: {type(exc).__name__}"
-            time.sleep(0.3)
         rows.append(row)
         if len(rows) % 50 == 0:
             print(f"  {len(rows)} files processed", flush=True)
 
-    with open(os.path.join(OUT, "candidates.csv"), "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+    columns = list(rows[0]) if rows else list(existing[0])
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows([{c: r.get(c, "") for c in columns} for r in existing + rows])
     ok = sum(1 for r in rows if not r["auto_reject"])
-    print(f"Done: {len(rows)} files, {ok} passed license/size checks and were downloaded for review")
+    print(f"Done: {len(rows)} new files, {ok} passed license/size checks and are ready for review; "
+          f"{len(existing) + len(rows)} rows in candidates.csv")
     return 0
 
 

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def row(**kw):
     base = {c: "" for c in MANIFEST_COLUMNS}
-    base.update(sample_id="food101:pizza/1.jpg", source="food101", source_folder="pizza", target="pizza",
+    base.update(sample_id="food101:pizza/1.jpg", source="food101", source_folder="pizza", target="pizza", variant="pizza",
                 location="pizza/1.jpg", checksum="sha256:" + "a" * 64, phash="0" * 16, group_id="g1", split="train")
     base.update(kw)
     return base
@@ -19,6 +19,7 @@ def row(**kw):
 
 def commons_row(**kw):
     fields = dict(sample_id="commons:1", source="commons", source_folder="kebab_commons", target="kebab",
+                  variant="doner_shawarma",
                   location="https://upload.wikimedia.org/wikipedia/commons/a/ab/K.jpg", checksum="sha1:" + "b" * 40,
                   author="A. Author", license="CC BY 2.0", license_url="https://creativecommons.org/licenses/by/2.0",
                   attribution_url="https://commons.wikimedia.org/wiki/File:K.jpg", group_id="g2")
@@ -43,6 +44,9 @@ def test_valid_rows():
     (row(target="sushi"), "unknown target"),
     (row(source_folder="cheesecake"), "does not map"),
     (row(split="holdout"), "bad split"),
+    (row(variant="cheesecake"), "variant"),
+    (commons_row(variant="gyros"), "variant"),
+    (row(source_folder="cheesecake", target="dessert", variant="pizza"), "variant"),
     (row(checksum="sha1:" + "a" * 40), "bad checksum"),
     (commons_row(license="CC BY-NC 2.0"), "license not allowed"),
     (commons_row(author=" "), "author missing"),
@@ -75,6 +79,7 @@ def test_committed_manifest_is_valid():
     assert validate(rows, exclusions) == []
     assert {r["target"] for r in rows} == {"dessert", "hamburger", "hot_dog", "kebab", "pizza"}
     assert not any(r["source_folder"] == "kebab" for r in rows), "Bing kebab images must not be in the manifest"
+    assert {r["variant"] for r in rows if r["target"] == "kebab"} <= {"skewered", "minced_skewer", "doner_shawarma"}
 
 
 def test_no_images_or_weights_tracked_by_git():

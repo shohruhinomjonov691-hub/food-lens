@@ -20,6 +20,13 @@ def test_source_folders():
     assert {"plov", "pilaf"} <= classes.EXCLUDED_FOLDERS
 
 
+def test_definitions_and_variants():
+    assert set(classes.DEFINITIONS) == set(classes.CLASSES)
+    assert "döner" in classes.DEFINITIONS["kebab"] and "Adana" in classes.DEFINITIONS["kebab"]
+    assert classes.VARIANTS["kebab"] == ("skewered", "minced_skewer", "doner_shawarma")
+    assert classes.VARIANTS["dessert"] == ("cheesecake", "chocolate_cake")
+
+
 def _config(**changes):
     config = json.loads(classes.CONFIG_PATH.read_text())
     config.update(changes)
@@ -31,6 +38,9 @@ def _config(**changes):
     ({"classes": ["pizza", "dessert", "hamburger", "hot_dog", "kebab"]}, "sorted"),
     ({"classes": ["dessert", "hamburger", "hot_dog", "kebab", "pizza", "sushi"]}, "without a source"),
     ({"excluded_folders": ["plov", "pizza"]}, "both mapped and excluded"),
+    ({"definitions": {"pizza": "x"}}, "definition"),
+    ({"variants": {"sushi": ["a"]}}, "unknown class"),
+    ({"variants": {"kebab": ["a", "a"]}}, "unique"),
 ])
 def test_invalid_configs_are_rejected(changes, message):
     with pytest.raises(ValueError, match=message):

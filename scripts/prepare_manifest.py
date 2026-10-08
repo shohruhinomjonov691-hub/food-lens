@@ -63,14 +63,14 @@ def build(drive_rows, official_rows, commons_rows, config):
             exclude(row, "bytes differ from the official Food-101 file")
             continue
         provenance["byte_identical"] += 1
-        row.update(sample_id=f"food101:{folder}/{name}", target=SOURCE_TO_CLASS[folder],
+        row.update(sample_id=f"food101:{folder}/{name}", target=SOURCE_TO_CLASS[folder], variant=folder,
                    official_split=off["official_split"], license=FOOD101_LICENSE_NOTE)
         included.append(row)
 
     for r in commons_rows:
         included.append({
             "sample_id": f"commons:{r['pageid']}", "source": "commons", "source_folder": "kebab_commons",
-            "target": SOURCE_TO_CLASS["kebab_commons"], "location": r["original_url"],
+            "target": SOURCE_TO_CLASS["kebab_commons"], "variant": r["variant"], "location": r["original_url"],
             "checksum": f"sha1:{r['original_sha1']}", "phash": r["phash"], "author": r["author"],
             "license": r["license"], "license_url": r["license_url"], "attribution_url": r["page_url"],
         })
@@ -150,11 +150,11 @@ def build(drive_rows, official_rows, commons_rows, config):
     splits = assign_splits(
         [row["location"] for row in included],
         {row["location"]: row["group_id"] for row in included},
-        {row["location"]: row["source_folder"] for row in included},
+        {row["location"]: row["variant"] for row in included},
         config["ratios"], config["seed"])
     for row in included:
         row["split"] = splits[row["location"]]
-    included.sort(key=lambda r: (r["target"], r["source_folder"], r["location"]))
+    included.sort(key=lambda r: (r["target"], r["variant"], r["source_folder"], r["location"]))
     exclusions.sort(key=lambda e: (e["source_folder"], e["location"]))
 
     stats = {
@@ -167,6 +167,8 @@ def build(drive_rows, official_rows, commons_rows, config):
         "per_class": {c: dict(Counter(r["split"] for r in included if r["target"] == c)) for c in CLASSES},
         "per_source_folder": {f: dict(Counter(r["split"] for r in included if r["source_folder"] == f))
                               for f in sorted({r["source_folder"] for r in included})},
+        "per_variant": {f"{t}/{v}": dict(Counter(r["split"] for r in included if (r["target"], r["variant"]) == (t, v)))
+                        for t, v in sorted({(r["target"], r["variant"]) for r in included})},
         "exclusion_reasons": dict(Counter(e["reason"].split(" of ")[0].split(":")[0] for e in exclusions)),
     }
     for c in CLASSES:

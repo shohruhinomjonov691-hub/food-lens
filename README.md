@@ -17,8 +17,12 @@ Fixed order (model output index), from [`config/classes.json`](config/classes.js
 | 0 | `dessert` | Food-101 `cheesecake` + `chocolate_cake` |
 | 1 | `hamburger` | Food-101 `hamburger` |
 | 2 | `hot_dog` | Food-101 `hot_dog` |
-| 3 | `kebab` | Wikimedia Commons, skewered kebabs (döner/shawarma excluded) |
+| 3 | `kebab` | Wikimedia Commons, three variants: skewered pieces (shish/shashlik), minced on skewers (Adana/koobideh/seekh), döner/shawarma |
 | 4 | `pizza` | Food-101 `pizza` |
+
+The model predicts the class only. `kebab` and `dessert` group several dishes, so the app shows
+typical ingredients **per variant the user picks** (never one merged list, and never as the contents
+of the photo). Variants are recorded per image in the manifest and used for stratified splitting.
 
 Plov/pilaf is out of scope. Calories, allergens and detecting the exact contents of a photo are out of
 scope.
@@ -55,8 +59,10 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python scripts/food101_provenance.py --review-list data/review_ids.txt   # streams ~5 GB, saves only hashes
-.venv/bin/python scripts/commons_kebab.py                                          # Commons candidates + review thumbnails
+.venv/bin/python scripts/commons_kebab.py                                          # Commons: skewered + minced kebabs
+.venv/bin/python scripts/commons_kebab.py --pass doner --append                    # Commons: döner/shawarma (no re-download)
 .venv/bin/python scripts/build_kebab_manifest.py queue                             # automatic checks + contact sheets
+.venv/bin/python scripts/build_kebab_manifest.py mark <sheet> --reject <sheet>:<cells>:<code>   # record a manual review
 .venv/bin/python scripts/build_kebab_manifest.py finalize                          # apply config/kebab_review.json
 .venv/bin/python scripts/prepare_manifest.py                                       # manifest, exclusions, stats
 .venv/bin/python -m pytest
@@ -68,7 +74,8 @@ Colab) and `data/` (provenance hashes, Commons thumbnails).
 Rules: unreadable files out; exact duplicates (same checksum) and near-duplicates (pHash Hamming
 distance ≤ 2, same class) keep one copy; pairs with distance ≤ 8 share a group and therefore a split;
 cross-class near-duplicates need an explicit decision in `config/data_prep.json`. Split: seed 42,
-70/15/15, stratified by source folder (both dessert sources appear in every split), group-aware.
+70/15/15, stratified by variant (cheesecake/chocolate cake and each kebab variant appear in every
+split), group-aware.
 
 ## Known limitations
 

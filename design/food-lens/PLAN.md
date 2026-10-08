@@ -3,7 +3,8 @@
 Static mockup for batch 6 (Next.js/TypeScript frontend). Nothing here uploads files, calls a model
 or a server: every state is fake and is selected with the URL hash.
 
-- `mockup.html` — the app screen; `#state=<state>&lang=<en|ko>`.
+- `mockup.html` — the app screen; `#state=<state>&lang=<en|ko>`; for `confirmed` also
+  `&dish=<pizza|kebab|dessert>&variant=<variant>`.
 - `review.html` — design-review tool only (state, language, desktop/390 px switcher). Never ship it.
 - `i18n/en.js`, `i18n/ko.js` — all UI strings, identical keys. English is the default; the choice is
   saved in `localStorage` (`fl.lang`) and the page still works when storage is blocked.
@@ -22,12 +23,17 @@ Run locally: `python3 -m http.server 8798 --bind 127.0.0.1 --directory design/fo
 | 3 Result | `result` | Top 3 with confidence bars, top match highlighted, "Is this Pizza?" → "Yes, show ingredients"; alternatives from the top 3 + "None of these" |
 | 3 Result | `uncertain` | Top-1 below threshold: "Not sure" notice, low-confidence guesses, user can pick one of the 5 dishes or try another photo |
 | 3 Result | `error-server` | Server error: "your photo was not saved", retry / choose another photo |
-| 4 Ingredients | `confirmed` | Only after confirmation: "Typical ingredients of …", disclaimer that this is **not what was detected in the photo**, source list, back / analyze another |
+| 4 Ingredients | `confirmed` | Only after confirmation: "Typical ingredients of …", disclaimer that this is **not what was detected in the photo**, source list, back / analyze another. For kebab and dessert the user first picks the kind (see below) |
 
 Product rules carried into the app:
 
 - Ingredients appear only after the user confirms (or picks) the dish.
 - The disclaimer is always visible next to the list, in both languages.
+- **Grouped classes show ingredients per variant, never one merged list.** The model predicts
+  `kebab` and `dessert` only; it does not know the kind. After confirming, the user picks it:
+  kebab → Shish / shashlik · Adana / koobideh · Döner / shawarma; dessert → Cheesecake · Chocolate
+  cake. The first variant is preselected, the choice is a radio group, and a note says the kind is
+  not detected from the photo. Pizza, hamburger and hot dog have a single list.
 - Each ingredient list has source links and the source language (batch 5). The mockup list is a
   labelled sample without sources.
 - No calories or allergens, and no claims about the exact contents of the photo (out of scope).
@@ -41,8 +47,8 @@ Product rules carried into the app:
 - Targets ≥ 40–44 px; visible focus ring; `aria-live` on the result panel; `aria-current` on the step.
 - Desktop: photo left, result right. ≤ 860 px: one column. ≤ 480 px: 3-column dish grid, one-column
   ingredients, buttons stretch.
-- Class labels: "Dessert (cake)" with hint "cheesecake, chocolate cake"; "Kebab (skewered)" with hint
-  "shish, shashlik, Adana" — matches the training data (Commons skewered kebabs, döner excluded).
+- Class labels: "Dessert (cake)" with hint "cheesecake, chocolate cake"; "Kebab" with hint
+  "shish, Adana/koobideh, döner/shawarma" — matches the training data (`config/classes.json`).
 
 ## Open points for batch 6
 
@@ -51,3 +57,5 @@ Product rules carried into the app:
 - On phones the result card is below the photo; the app should scroll it into view after analysis.
 - Korean copy has not been reviewed by a native speaker.
 - Emoji icons are placeholders; final icons should be SVG.
+- Ingredient lists in the mockup are labelled samples; batch 5 replaces them with reviewed lists per
+  variant, each with source links and source language.

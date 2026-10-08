@@ -117,6 +117,7 @@ p { margin: 6px 0 0; color: var(--ink-2); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; min-height: 40px; }
 .chip.muted { color: var(--muted); }
+.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 
 /* Notices */
 .notice { display: flex; gap: 12px; border-radius: 14px; padding: 14px 16px; }
@@ -301,6 +302,11 @@ footer { padding: 28px 0 36px; color: var(--muted); font-size: 12.5px; text-alig
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>
           <p style="margin:0" data-t="ingredients.disclaimer"></p>
         </div>
+        <div id="variant-box" hidden>
+          <h3 style="margin-top:16px" data-t="variant.pick"></h3>
+          <div class="chips" id="variants" role="radiogroup"></div>
+          <p class="small" id="variant-note" style="margin-top:8px"></p>
+        </div>
         <ul class="ing" id="ing"></ul>
         <div class="sources">
           <h3 data-t="ingredients.sources"></h3>
@@ -347,6 +353,7 @@ const STEP = { empty: "upload", "error-file": "upload", crop: "crop", loading: "
   uncertain: "result", "error-server": "result", confirmed: "ingredients" };
 const ORDER = ["upload", "crop", "result", "ingredients"];
 const STORAGE_KEY = "fl.lang";
+const VARIANTS = { kebab: ["skewered", "minced_skewer", "doner_shawarma"], dessert: ["cheesecake", "chocolate_cake"] };
 
 function params() { return new URLSearchParams(location.hash.slice(1)); }
 function savedLang() { try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; } }
@@ -386,8 +393,18 @@ function render() {
   document.getElementById("alts").innerHTML = RESULT.slice(1).map(([id]) => `<button class="chip" type="button">${dish(id)}</button>`).join("") +
     `<button class="chip muted" type="button">${t("result.none")}</button>`;
   document.getElementById("pick").innerHTML = DISHES.map((d) => `<button class="chip" type="button"><span aria-hidden="true">${d.emoji}</span> ${dish(d.id)}</button>`).join("");
-  document.getElementById("ing-title").textContent = t("ingredients.title", { dish: dish("pizza") });
-  document.getElementById("ing").innerHTML = T["ing.pizza"].map((x) => `<li>${x}</li>`).join("");
+  // Confirmed dish (mockup: #dish=pizza|kebab|dessert&variant=...). Kebab and dessert group several
+  // dishes, so their ingredients are shown per variant the user picks; pizza has one list.
+  const confirmed = VARIANTS[p.get("dish")] || p.get("dish") === "pizza" ? p.get("dish") : "pizza";
+  const variants = VARIANTS[confirmed] || [];
+  const variant = variants.includes(p.get("variant")) ? p.get("variant") : variants[0];
+  document.getElementById("ing-title").textContent = t("ingredients.title", {
+    dish: variant ? `${dish(confirmed)} · ${t(`variant.${confirmed}.${variant}`)}` : dish(confirmed) });
+  document.getElementById("variant-box").hidden = !variants.length;
+  document.getElementById("variants").innerHTML = variants.map((v) =>
+    `<button class="chip" type="button" role="radio" aria-checked="${v === variant}" data-variant="${v}">${t(`variant.${confirmed}.${v}`)}</button>`).join("");
+  document.getElementById("variant-note").textContent = variants.length ? t(`variant.note.${confirmed}`) : "";
+  document.getElementById("ing").innerHTML = T[variant ? `ing.${confirmed}.${variant}` : "ing.pizza"].map((x) => `<li>${x}</li>`).join("");
 }
 
 document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
@@ -397,6 +414,13 @@ document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("cli
   location.hash = p.toString();
   render();
 }));
+document.getElementById("variants").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-variant]");
+  if (!b) return;
+  const p = params();
+  p.set("variant", b.dataset.variant);
+  location.hash = p.toString();
+});
 window.addEventListener("hashchange", render);
 render();
 </script>

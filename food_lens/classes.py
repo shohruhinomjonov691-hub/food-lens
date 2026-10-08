@@ -30,6 +30,13 @@ def validate_config(config):
     overlap = set(config["source_folders"]) & set(config["excluded_folders"])
     if overlap:
         raise ValueError(f"folders both mapped and excluded: {sorted(overlap)}")
+    if set(config.get("definitions", {})) != set(classes):
+        raise ValueError("every class needs exactly one definition")
+    for name, variants in config.get("variants", {}).items():
+        if name not in classes:
+            raise ValueError(f"variants for unknown class {name!r}")
+        if len(variants) != len(set(variants)) or not variants:
+            raise ValueError(f"variants of {name!r} must be unique and non-empty")
 
 
 _CONFIG = load_config()
@@ -37,8 +44,11 @@ CLASSES = tuple(_CONFIG["classes"])
 CLASS_TO_INDEX = {name: i for i, name in enumerate(CLASSES)}
 SOURCE_TO_CLASS = dict(_CONFIG["source_folders"])
 EXCLUDED_FOLDERS = frozenset(_CONFIG["excluded_folders"])
+DEFINITIONS = dict(_CONFIG["definitions"])
+VARIANTS = {name: tuple(v) for name, v in _CONFIG.get("variants", {}).items()}
 
 
 def target_for_folder(folder):
     """Target class for a source folder, or None if the folder is excluded or unknown."""
     return SOURCE_TO_CLASS.get(folder)
+

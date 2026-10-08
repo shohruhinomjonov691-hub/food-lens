@@ -1,12 +1,35 @@
 {
   "seed": 42,
-  "ratios": {"train": 0.7, "val": 0.15, "test": 0.15},
-  "near_duplicate": {"remove_max_distance": 2, "group_max_distance": 8},
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "near_duplicate": {
+    "remove_max_distance": 2,
+    "group_max_distance": 8
+  },
   "excluded_drive_folders": {
     "kebab": "Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons",
     "plov": "out of scope (plov/pilaf removed from the 5-class scope)",
     "pilaf": "out of scope (plov/pilaf removed from the 5-class scope)"
   },
-  "manual_exclusions": [],
-  "cross_class_reviewed": []
+  "manual_exclusions": [
+    {
+      "location": "hamburger/3578279.jpg",
+      "reason": "not a food photo: event flyer (text poster); byte-identical pair 3578279/3783650 in the official Food-101 train split (visually checked 2026-10-09)"
+    },
+    {
+      "location": "hamburger/3783650.jpg",
+      "reason": "not a food photo: event flyer (text poster); byte-identical pair 3578279/3783650 in the official Food-101 train split (visually checked 2026-10-09)"
+    }
+  ],
+  "cross_class_reviewed": [
+    {
+      "a": "hamburger/2498283.jpg",
+      "b": "hot_dog/784362.jpg",
+      "decision": "keep_grouped",
+      "note": "different photos (plated burger vs hot dog on paper), pHash d=8; visually checked 2026-10-09"
+    }
+  ]
 }

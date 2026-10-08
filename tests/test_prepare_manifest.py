@@ -35,8 +35,8 @@ def official(row, split="train", sha256=None):
             "sha256": sha256 or row["sha256"]}
 
 
-def commons(pageid, phash):
-    return {"pageid": str(pageid), "original_url": f"https://upload.wikimedia.org/wikipedia/commons/a/ab/K{pageid}.jpg",
+def commons(pageid, phash, variant="skewered"):
+    return {"pageid": str(pageid), "variant": variant, "original_url": f"https://upload.wikimedia.org/wikipedia/commons/a/ab/K{pageid}.jpg",
             "original_sha1": hashlib.sha1(str(pageid).encode()).hexdigest(), "phash": f"{phash:016x}",
             "author": "Someone", "license": "CC BY-SA 4.0",
             "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
@@ -53,7 +53,8 @@ def dataset():
             r = drive(folder, f"{100000 + i}.jpg", far_hash(i))
             rows.append(r)
             off.append(official(r, "test" if n % 4 == 0 else "train"))
-    kebab = [commons(5000 + k, far_hash(1000 + k)) for k in range(40)]
+    variants = ("skewered", "minced_skewer", "doner_shawarma")
+    kebab = [commons(5000 + k, far_hash(1000 + k), variants[k % 3]) for k in range(60)]
     return rows, off, kebab
 
 
@@ -69,9 +70,13 @@ def reasons(exclusions):
 
 def test_clean_dataset(dataset):
     included, exclusions, stats = run(*dataset)
-    assert len(included) == 240 and exclusions == []
+    assert len(included) == 260 and exclusions == []
     assert stats["per_class"]["dessert"]["total"] == 80
-    assert stats["per_class"]["kebab"]["total"] == 40
+    assert stats["per_class"]["kebab"]["total"] == 60
+    # Each kebab variant (20 images) is split on its own: 14 / 3 / 3.
+    for v in ("skewered", "minced_skewer", "doner_shawarma"):
+        assert stats["per_variant"][f"kebab/{v}"] == {"train": 14, "val": 3, "test": 3}
+    assert stats["per_variant"]["dessert/cheesecake"] == {"train": 28, "val": 6, "test": 6}
     assert stats["food101_provenance"] == {"byte_identical": 200}
     assert {r["official_split"] for r in included if r["source"] == "food101"} == {"train", "test"}
 
@@ -145,7 +150,7 @@ def test_manual_exclusion(dataset):
     config["manual_exclusions"] = [{"location": kebab[0]["original_url"], "reason": "not kebab"}]
     included, exclusions, _ = run(rows, off, kebab, config)
     assert reasons(exclusions)[kebab[0]["original_url"]] == "not kebab"
-    assert len(included) == 239
+    assert len(included) == 259
 
 
 def test_deterministic(dataset):

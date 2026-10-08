@@ -9,11 +9,11 @@ import csv
 import re
 from collections import defaultdict
 
-from food_lens.classes import CLASSES, SOURCE_TO_CLASS
+from food_lens.classes import CLASSES, SOURCE_TO_CLASS, VARIANTS
 from food_lens.split import SPLITS
 
 MANIFEST_COLUMNS = (
-    "sample_id", "source", "source_folder", "target", "location", "checksum", "phash",
+    "sample_id", "source", "source_folder", "target", "variant", "location", "checksum", "phash",
     "group_id", "split", "official_split", "author", "license", "license_url", "attribution_url",
 )
 EXCLUSION_COLUMNS = ("source", "source_folder", "location", "checksum", "reason")
@@ -59,6 +59,9 @@ def validate(rows, exclusions=()):
             problems.append(f"{where}: unknown target {r['target']!r}")
         if SOURCE_TO_CLASS.get(r["source_folder"]) != r["target"]:
             problems.append(f"{where}: folder {r['source_folder']!r} does not map to {r['target']!r}")
+        allowed_variants = VARIANTS.get(r["target"], (r["target"],))
+        if r["variant"] not in allowed_variants:
+            problems.append(f"{where}: variant {r['variant']!r} not in {allowed_variants}")
         if r["split"] not in SPLITS:
             problems.append(f"{where}: bad split {r['split']!r}")
         if not CHECKSUM[r["source"]].match(r["checksum"]):

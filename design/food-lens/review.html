@@ -26,19 +26,22 @@ iframe { border: 1px solid #d3c3ad; border-radius: 10px; background: #fbf6ef; wi
     <button data-v="result">result</button><button data-v="uncertain">uncertain</button><button data-v="confirmed">confirmed</button>
     <button data-v="error-file">bad file</button><button data-v="error-server">server error</button>
   </span>
+  <span class="group" data-key="dish">Confirmed dish:
+    <button data-v="">pizza</button><button data-v="kebab">kebab</button><button data-v="dessert">dessert</button>
+  </span>
   <span class="group" data-key="lang">Lang: <button data-v="">saved</button><button data-v="en">EN</button><button data-v="ko">KO</button></span>
   <span class="group" data-key="size">Size: <button data-v="desktop">desktop</button><button data-v="mobile">390 px</button></span>
 </div>
 <div class="frame" id="frame"><iframe id="app" title="Food Lens mockup"></iframe></div>
 <script>
 "use strict";
-const opts = { state: "result", lang: "", size: "desktop" };
+const opts = { state: "result", dish: "", lang: "", size: "desktop" };
 function update() {
   document.querySelectorAll(".group").forEach((g) =>
     g.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(opts[g.dataset.key] === b.dataset.v))));
   document.getElementById("frame").className = "frame " + opts.size;
   const p = new URLSearchParams();
-  for (const k of ["state", "lang"]) if (opts[k]) p.set(k, opts[k]);
+  for (const k of ["state", "dish", "lang"]) if (opts[k]) p.set(k, opts[k]);
   document.getElementById("app").src = "mockup.html#" + p.toString();
 }
 document.querySelectorAll(".group").forEach((g) =>

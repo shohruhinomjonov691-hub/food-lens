@@ -19,5 +19,23 @@
   "excluded_folders": [
     "plov",
     "pilaf"
-  ]
+  ],
+  "definitions": {
+    "dessert": "Cake desserts: cheesecake and chocolate cake (Food-101).",
+    "hamburger": "Hamburger (Food-101).",
+    "hot_dog": "Hot dog (Food-101).",
+    "kebab": "Kebab in the broad sense, three variants: skewered meat pieces (shish, shashlik, tavuk şiş, chuan), minced meat on skewers (Adana, koobideh, seekh, lula) and döner/shawarma (meat from a rotisserie, on a plate or in bread/wrap).",
+    "pizza": "Pizza (Food-101)."
+  },
+  "variants": {
+    "dessert": [
+      "cheesecake",
+      "chocolate_cake"
+    ],
+    "kebab": [
+      "skewered",
+      "minced_skewer",
+      "doner_shawarma"
+    ]
+  }
 }
