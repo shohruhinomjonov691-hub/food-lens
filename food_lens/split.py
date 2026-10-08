@@ -1,12 +1,20 @@
-"""Deterministic, group-aware, stratified train/val/test split.
+"""Deterministic, group-aware split stratified by variant.
 
-Every member of a group (near-duplicates) lands in the same split, so a test image never has a
-near-copy in train. Groups are stratified by their first member's stratum (source folder).
+Every member of a group (near-duplicates, derived copies, one author's series) lands in the same
+split, so a test image never has a near-copy in train. A group may hold several variants (e.g. a
+hamburger/hot dog look-alike pair); its variant counts are treated as a vector, and a group goes to
+val/test only if it fits that split's remaining quota for *every* variant it contains. Groups are
+never cut to fill a quota; whatever does not fit goes to train, and quota shortfalls are reported.
 """
 import random
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 SPLITS = ("train", "val", "test")
+
+
+def quotas(strata_sizes, ratios):
+    """Per stratum target counts for val and test (train takes the rest)."""
+    return {s: {split: round(n * ratios[split]) for split in ("val", "test")} for s, n in strata_sizes.items()}
 
 
 def assign_splits(items, groups, strata, ratios, seed):
@@ -14,7 +22,7 @@ def assign_splits(items, groups, strata, ratios, seed):
 
     items:  iterable of ids
     groups: dict id -> group id (every item must be present)
-    strata: dict id -> stratum name
+    strata: dict id -> stratum name (the variant)
     ratios: dict split -> fraction, e.g. {"train": 0.7, "val": 0.15, "test": 0.15}
     """
     if abs(sum(ratios.values()) - 1) > 1e-9 or set(ratios) != set(SPLITS):
@@ -22,22 +30,54 @@ def assign_splits(items, groups, strata, ratios, seed):
     members = defaultdict(list)
     for item in items:
         members[groups[item]].append(item)
-    by_stratum = defaultdict(list)
-    for group_id, group_items in members.items():
-        by_stratum[strata[min(group_items)]].append(group_id)
+    vectors = {g: Counter(strata[i] for i in m) for g, m in members.items()}
+    target = quotas(Counter(strata[i] for g in members.values() for i in g), ratios)
+    filled = {split: Counter() for split in ("val", "test")}
 
+    # Largest groups first (they are the hardest to place), random but seeded order within a size.
+    # Random keys are drawn over sorted group ids, so the result never depends on input order.
+    rng = random.Random(f"{seed}")
+    key = {g: rng.random() for g in sorted(members, key=lambda g: min(members[g]))}
+    order = sorted(members, key=lambda g: (-len(members[g]), key[g], min(members[g])))
     result = {}
-    for stratum in sorted(by_stratum):
-        group_ids = sorted(by_stratum[stratum])
-        random.Random(f"{seed}:{stratum}").shuffle(group_ids)
-        total = sum(len(members[g]) for g in group_ids)
-        quota = {s: round(total * ratios[s]) for s in ("test", "val")}
-        filled = {"test": 0, "val": 0}
-        for group_id in group_ids:
-            size = len(members[group_id])
-            split = next((s for s in ("test", "val") if filled[s] + size <= quota[s]), "train")
-            if split != "train":
-                filled[split] += size
-            for item in members[group_id]:
-                result[item] = split
+    for g in order:
+        vec = vectors[g]
+        options = []
+        for split in ("test", "val"):
+            room = {s: target[s][split] - filled[split][s] for s in vec}
+            if all(vec[s] <= room[s] for s in vec):
+                options.append((sum(room.values()), split == "test", split))
+        split = max(options)[2] if options else "train"
+        if split != "train":
+            filled[split].update(vec)
+        for item in members[g]:
+            result[item] = split
     return result
+
+
+def quota_report(items, groups, strata, splits, ratios, minimums=None):
+    """Per stratum: target vs actual val/test counts, and whether configured minimums hold.
+
+    minimums: dict stratum -> minimum count required in val and in test.
+    """
+    sizes = Counter(strata[i] for i in items)
+    target = quotas(sizes, ratios)
+    actual = {s: Counter() for s in sizes}
+    for i in items:
+        actual[strata[i]][splits[i]] += 1
+    group_sizes = Counter(groups[i] for i in items)
+    report = {}
+    for s in sorted(sizes):
+        row = {"total": sizes[s], "target_val": target[s]["val"], "target_test": target[s]["test"],
+               "val": actual[s]["val"], "test": actual[s]["test"], "train": actual[s]["train"]}
+        need = (minimums or {}).get(s)
+        if need is not None:
+            row["minimum"] = need
+            row["minimum_met"] = row["val"] >= need and row["test"] >= need
+            if not row["minimum_met"]:
+                big = sorted({group_sizes[groups[i]] for i in items if strata[i] == s and group_sizes[groups[i]] > 1},
+                             reverse=True)[:5]
+                row["reason"] = (f"only {sizes[s]} images; target val/test {target[s]['val']}/{target[s]['test']}"
+                                 f"; leakage groups are never split (largest multi-image groups: {big})")
+        report[s] = row
+    return report

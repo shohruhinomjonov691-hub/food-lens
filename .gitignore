@@ -1,20 +1,58 @@
-# Images and datasets never go to Git (licenses: see README).
+# Images and datasets never go to Git (licenses: see README). Keep in sync with
+# tests/test_repo_policy.py (IMAGE_EXTS, WEIGHT_EXTS, ARCHIVE_EXTS).
 data/
 audit/
 *.jpg
 *.jpeg
+*.jpe
 *.png
 *.webp
 *.gif
 *.bmp
+*.tif
+*.tiff
 *.heic
+*.heif
+*.avif
+*.jxl
+*.dng
+*.raw
+*.cr2
+*.nef
+*.arw
+*.psd
+*.ico
 
-# Model weights and run outputs
+# Model weights, tensors and run outputs
 *.pth
 *.pt
+*.ckpt
+*.safetensors
 *.onnx
+*.h5
+*.hdf5
+*.keras
+*.pb
+*.tflite
+*.mlmodel
+*.engine
+*.bin
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.joblib
 runs/
 checkpoints/
+
+# Dataset archives
+*.zip
+*.tar
+*.tgz
+*.gz
+*.7z
+*.rar
+*.parquet
 
 # Design screenshots (local verification only)
 design/**/screenshots/

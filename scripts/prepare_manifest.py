@@ -20,9 +20,11 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from food_lens.classes import CLASSES, SOURCE_TO_CLASS  # noqa: E402
+from food_lens.commons import DERIVED_HINT, canonical_author  # noqa: E402
 from food_lens.dedup import UnionFind, near_pairs, summarize_groups  # noqa: E402
+from food_lens.imaging import hamming  # noqa: E402
 from food_lens.manifest import EXCLUSION_COLUMNS, MANIFEST_COLUMNS, read_csv, validate, write_csv  # noqa: E402
-from food_lens.split import SPLITS, assign_splits  # noqa: E402
+from food_lens.split import SPLITS, assign_splits, quota_report  # noqa: E402
 
 FOOD101_LICENSE_NOTE = "Food-101 (ETH Zurich); images from Foodspotting, see README"
 
@@ -68,21 +70,37 @@ def build(drive_rows, official_rows, commons_rows, config):
                    official_split=off["official_split"], license=FOOD101_LICENSE_NOTE)
         included.append(row)
 
+    aliases = config.get("author_aliases", {})
     for r in commons_rows:
         included.append({
             "sample_id": f"commons:{r['pageid']}", "source": "commons", "source_folder": "kebab_commons",
             "target": SOURCE_TO_CLASS["kebab_commons"], "variant": r["variant"], "location": r["original_url"],
             "checksum": f"sha1:{r['original_sha1']}", "phash": r["phash"], "author": r["author"],
             "license": r["license"], "license_url": r["license_url"], "attribution_url": r["page_url"],
+            # Internal fields (not written to the manifest):
+            "title": r.get("title", ""), "credit": r.get("credit", ""),
+            "author_id": canonical_author(r["author"], aliases),
         })
 
-    kept = []
+    nd = config["near_duplicate"]
+    kept, manual_rows = [], []
     for row in included:
         if row["location"] in manual:
             exclude(row, manual[row["location"]])
+            manual_rows.append(row)
         else:
             kept.append(row)
-    included = kept
+    # A manual exclusion also removes every copy of that image (same bytes, or pHash d<=remove_max in
+    # the same class), so listing only one copy can never leave another copy in the dataset.
+    included = []
+    for row in kept:
+        source = next((m for m in manual_rows if m["checksum"] == row["checksum"] or (
+            m["target"] == row["target"]
+            and hamming(int(m["phash"], 16), int(row["phash"], 16)) <= nd["remove_max_distance"])), None)
+        if source:
+            exclude(row, f"copy of manually excluded {source['location']}")
+        else:
+            included.append(row)
 
     # Exact duplicates: identical checksum, keep the smallest location.
     by_checksum = defaultdict(list)
@@ -101,8 +119,19 @@ def build(drive_rows, official_rows, commons_rows, config):
                 exclude(dup, f"exact duplicate of {rows[0]['location']}")
     included = kept
 
+    # Derived Commons files (crops, retouches) are invisible to pHash; they must be listed.
+    by_id = {row["sample_id"]: row for row in included}
+    derived = config.get("derived_copies", [])
+    known = {d["copy"] for d in derived} | {d["original"] for d in derived} | {
+        d["sample_id"] for d in config.get("derived_reviewed", [])}
+    unlisted = [row["sample_id"] for row in included if row["source"] == "commons"
+                and (DERIVED_HINT.search(row["title"]) or re.search(r"deriv", row["credit"], re.IGNORECASE))
+                and row["sample_id"] not in known]
+    if unlisted:
+        raise NeedsReview("Commons files that look derived (crop/retouch) need an entry in config/data_prep.json "
+                          "(derived_copies or derived_reviewed): " + ", ".join(sorted(unlisted)))
+
     # Near duplicates by perceptual hash.
-    nd = config["near_duplicate"]
     by_loc = {row["location"]: row for row in included}
     pairs = near_pairs({loc: int(row["phash"], 16) for loc, row in by_loc.items()}, nd["group_max_distance"])
     same = [(a, b, d) for a, b, d in pairs if by_loc[a]["target"] == by_loc[b]["target"]]
@@ -122,6 +151,27 @@ def build(drive_rows, official_rows, commons_rows, config):
         raise NeedsReview("cross-class near-duplicates need a decision in config/data_prep.json "
                           "(cross_class_reviewed): " + "; ".join(f"{a} <-> {b} (d={d})" for a, b, d in unreviewed))
 
+    # Groups are computed on the graph BEFORE anything is removed, so a removed image that linked two
+    # kept images (A ~ B ~ C, B removed) still keeps A and C together.
+    groups = UnionFind(sorted(by_loc))
+    for a, b, _ in pairs:
+        groups.union(a, b)
+    derived_count = 0
+    for d in derived:
+        if d["copy"] in by_id and d["original"] in by_id:
+            groups.union(by_id[d["copy"]]["location"], by_id[d["original"]]["location"])
+    # Commons photos by the same person (canonical author ID) within one variant stay in one split, so
+    # test never shares a photographer's series with train. Per variant keeps the quotas reachable.
+    if config.get("group_commons_by_author"):
+        first_by_author = {}
+        for row in included:
+            if row["source"] == "commons":
+                key = (row["author_id"], row["variant"])
+                if key in first_by_author:
+                    groups.union(first_by_author[key], row["location"])
+                else:
+                    first_by_author[key] = row["location"]
+
     removed = {}
     uf = UnionFind(list(by_loc))
     for a, b, _ in removable:
@@ -134,55 +184,50 @@ def build(drive_rows, official_rows, commons_rows, config):
             note = decisions[frozenset((a, b))]["note"]
             removed.setdefault(a, f"cross-class near duplicate with {b} (d={d}): {note}")
             removed.setdefault(b, f"cross-class near duplicate with {a} (d={d}): {note}")
+    for d in derived:
+        if d["copy"] in by_id and d["original"] in by_id:
+            derived_count += 1
+            removed.setdefault(by_id[d["copy"]]["location"],
+                               f"derived copy ({d['reason']}) of {by_id[d['original']]['location']}")
     for loc, reason in removed.items():
         exclude(by_loc[loc], reason)
     included = [row for row in included if row["location"] not in removed]
 
-    # Groups: remaining near pairs (same or cross class, d <= group_max) stay in one split.
-    remaining = {row["location"] for row in included}
-    groups = UnionFind(sorted(remaining))
-    for a, b, _ in pairs:
-        if a in remaining and b in remaining:
-            groups.union(a, b)
-    # Commons photos by the same author within one variant (often one photo series) also stay in
-    # one split, so test never shares a photographer's series with train. Grouping per variant keeps
-    # each variant's split quotas reachable.
-    if config.get("group_commons_by_author"):
-        first_by_author = {}
-        for row in included:
-            if row["source"] == "commons":
-                author = (row["author"].strip().lower(), row["variant"])
-                if author in first_by_author:
-                    groups.union(first_by_author[author], row["location"])
-                else:
-                    first_by_author[author] = row["location"]
-    group_index = {root: f"g{i:05d}" for i, root in enumerate(sorted(groups.groups()))}
+    roots = sorted({groups.find(row["location"]) for row in included})
+    group_index = {root: f"g{i:05d}" for i, root in enumerate(roots)}
     for row in included:
         row["group_id"] = group_index[groups.find(row["location"])]
 
-    splits = assign_splits(
-        [row["location"] for row in included],
-        {row["location"]: row["group_id"] for row in included},
-        {row["location"]: row["variant"] for row in included},
-        config["ratios"], config["seed"])
+    items = [row["location"] for row in included]
+    group_of = {row["location"]: row["group_id"] for row in included}
+    stratum = {row["location"]: row["variant"] for row in included}
+    splits = assign_splits(items, group_of, stratum, config["ratios"], config["seed"])
     for row in included:
         row["split"] = splits[row["location"]]
     included.sort(key=lambda r: (r["target"], r["variant"], r["source_folder"], r["location"]))
     exclusions.sort(key=lambda e: (e["source_folder"], e["location"]))
 
+    group_sizes = Counter(group_of.values())
     stats = {
         "seed": config["seed"], "ratios": config["ratios"],
         "food101_provenance": dict(provenance),
         "exact_duplicates": exact,
         "near_duplicates": near_stats,
-        "multi_member_groups": sum(1 for g in groups.groups().values() if len(g) > 1),
+        "derived_copies_removed": derived_count,
+        "multi_member_groups": sum(1 for n in group_sizes.values() if n > 1),
+        "largest_groups": sorted(group_sizes.values(), reverse=True)[:5],
         "included": len(included), "excluded": len(exclusions),
         "per_class": {c: dict(Counter(r["split"] for r in included if r["target"] == c)) for c in CLASSES},
         "per_source_folder": {f: dict(Counter(r["split"] for r in included if r["source_folder"] == f))
                               for f in sorted({r["source_folder"] for r in included})},
         "per_variant": {f"{t}/{v}": dict(Counter(r["split"] for r in included if (r["target"], r["variant"]) == (t, v)))
                         for t, v in sorted({(r["target"], r["variant"]) for r in included})},
-        "exclusion_reasons": dict(Counter(re.split(r" of [a-z_]+/| \(|:", e["reason"])[0] for e in exclusions)),
+        "quota_check": quota_report(items, group_of, stratum, splits, config["ratios"],
+                                    config.get("split_minimums")),
+        "commons_authors_per_variant": {v: len({r["author_id"] for r in included
+                                                if r["source"] == "commons" and r["variant"] == v})
+                                        for v in sorted({r["variant"] for r in included if r["source"] == "commons"})},
+        "exclusion_reasons": dict(Counter(re.split(r" of [a-z_]+/| of https| \(|:", e["reason"])[0] for e in exclusions)),
     }
     for c in CLASSES:
         stats["per_class"][c]["total"] = sum(stats["per_class"][c].get(s, 0) for s in SPLITS)

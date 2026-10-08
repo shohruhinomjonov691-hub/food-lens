@@ -1509,6 +1509,99 @@
     "199878864",
     "199879171"
   ],
+  "revisions": [
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "Commons description 'vegetarian version of … Mutton Seekh Kebab'",
+      "pageid": "102957676",
+      "reason": "veg: vegetarian seekh (grated vegetables, gram flour, curd) — not meat",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "title 'CORN SEEKH KABAB'; 640 px image shows corn/gram rolls",
+      "pageid": "40988311",
+      "reason": "veg: corn seekh kebab, no meat",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "title/description 'Chickpea from Jafar's'; 640 px image",
+      "pageid": "150126227",
+      "reason": "veg: roasted chickpeas over rice/salad; no döner meat visible",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "Commons category 'Photos of vegan food by Roee Shpernik'; title 'Soya on stick'",
+      "pageid": "37456407",
+      "reason": "veg: soya chunks on skewers",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "Commons title and category 'Vegan food'",
+      "pageid": "8189733",
+      "reason": "veg: vegetable/mushroom skewers",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "reject",
+      "evidence": "titles '… Colootola' / '… Colootola II', same author; 640 px images",
+      "pageid": "56607007",
+      "reason": "dup: same plate and stall as 56606996 (second angle)",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "accept",
+      "evidence": "Commons description 'anticuchos de carne de pollo'; 640 px image shows pieces",
+      "pageid": "42996937",
+      "reason": "tavuk şiş is chicken pieces on a skewer (breaded); earlier minced override was wrong",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description",
+      "variant": "skewered"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "accept",
+      "evidence": "Commons description 'Different Chicken shik kababs'; 640 px image",
+      "pageid": "144924160",
+      "reason": "cooked chicken kebabs on a stall tray are the main subject; 'scene' reject was inconsistent",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description",
+      "variant": "skewered"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "accept",
+      "evidence": "Commons description 'Grilling kebabs in Adana on a charcoal grill'; 640 px image",
+      "pageid": "84394724",
+      "reason": "kebabs on a charcoal grill fill the frame; 'scene' reject was inconsistent with accepted grill photos",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "accept",
+      "evidence": "640 px image",
+      "pageid": "60657533",
+      "reason": "chicken shashlik cooking on coals; meat is partly browned, 'raw' not supported by the image",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description"
+    },
+    {
+      "date": "2026-10-09",
+      "decision": "accept",
+      "evidence": "Commons title 'Suya with pepper sauce'; 640 px image shows grilled meat pieces",
+      "pageid": "101954281",
+      "reason": "suya is spiced grilled meat cooked on skewers, served off the skewer like shashlik plates",
+      "source": "Codex review of develop@28f2ab1 + re-check on 640 px thumbnail and Commons description",
+      "variant": "skewered"
+    }
+  ],
   "variant_override": {
     "116529740": "skewered",
     "134245153": "minced_skewer",

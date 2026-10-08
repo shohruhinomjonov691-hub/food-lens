@@ -1,5 +1,4 @@
 import csv
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -82,10 +81,22 @@ def test_committed_manifest_is_valid():
     assert {r["variant"] for r in rows if r["target"] == "kebab"} <= {"skewered", "minced_skewer", "doner_shawarma"}
 
 
-def test_no_images_or_weights_tracked_by_git():
-    try:
-        files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    except (OSError, subprocess.CalledProcessError):
-        pytest.skip("not a git checkout")
-    banned = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".pth", ".pt", ".onnx")
-    assert [f for f in files.splitlines() if f.lower().endswith(banned)] == []
+
+def test_committed_manifest_has_no_split_leakage():
+    """Independent reconstruction from the manifest alone: near pairs and author series share a split."""
+    from food_lens.commons import canonical_author
+    from food_lens.dedup import near_pairs
+
+    path = ROOT / "manifests" / "manifest_v1.csv"
+    if not path.exists():
+        pytest.skip("manifest not generated yet")
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    by_loc = {r["location"]: r for r in rows}
+    pairs = near_pairs({loc: int(r["phash"], 16) for loc, r in by_loc.items()}, 8)
+    assert [(a, b) for a, b, _ in pairs if by_loc[a]["split"] != by_loc[b]["split"]] == []
+    series = {}
+    for r in rows:
+        if r["source"] == "commons":
+            series.setdefault((canonical_author(r["author"]), r["variant"]), set()).add(r["split"])
+    assert {k: v for k, v in series.items() if len(v) > 1} == {}

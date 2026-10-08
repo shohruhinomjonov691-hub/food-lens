@@ -46,8 +46,11 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
 ### Licenses
 
 - **Food-101** (Bossard, Guillaumin, Van Gool, ECCV 2014, ETH Zurich). The images come from
-  Foodspotting and are not owned by ETH; the dataset is used here for non-commercial research and
-  education only. Images are never redistributed. Provenance: the Drive copy is compared
+  Foodspotting and are not owned by ETH; its license agreement allows "scientific fair use" and asks
+  for anything beyond that to be negotiated with the picture owners. It is used here for
+  non-commercial research and education only, and images are never redistributed. **Whether a model
+  trained on it may back a public deployment (food.gotrips.cloud) is not yet clarified** — open item
+  before deploy. Provenance: the Drive copy is compared
   byte-for-byte with the official archive (`scripts/food101_provenance.py`).
 - **Wikimedia Commons** kebab photos: each file keeps its own license (CC0 / public domain / CC BY /
   CC BY-SA) and author, recorded per file in `manifests/kebab_commons.csv`. Attribution is required
@@ -60,18 +63,20 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
 | --- | ---: | ---: | ---: | ---: |
 | dessert / cheesecake | 700 | 150 | 150 | 1000 |
 | dessert / chocolate_cake | 698 | 150 | 150 | 998 |
-| hamburger | 699 | 150 | 149 | 998 |
-| hot_dog | 698 | 149 | 150 | 997 |
+| hamburger | 698 | 150 | 150 | 998 |
+| hot_dog | 697 | 150 | 150 | 997 |
 | kebab / skewered | 157 | 34 | 34 | 225 |
-| kebab / minced_skewer | 60 | 13 | 13 | 86 |
-| kebab / doner_shawarma | 43 | 9 | 9 | 61 |
+| kebab / minced_skewer | 58 | 13 | 13 | 84 |
+| kebab / doner_shawarma | 41 | 9 | 9 | 59 |
 | pizza | 699 | 150 | 150 | 999 |
-| **Total** | **3754** | **805** | **805** | **5364** |
+| **Total** | **3748** | **806** | **806** | **5360** |
 
 Food-101 part: 5000 Drive files, all byte-identical to the official archive
 ([`manifests/food101_provenance_v1.json`](manifests/food101_provenance_v1.json)); 8 removed (6 near
-copies, 2 copies of an event flyer). Kebab: 372 Commons photos accepted out of 1006 candidates, each
-looked at; döner/shawarma is the smallest variant.
+copies, 2 copies of an event flyer). Kebab: 368 Commons photos (370 accepted after review, minus 2
+crops of other accepted files); every candidate was looked at, and re-checks are recorded next to
+the first decision in `manifests/kebab_commons_review.csv`. `manifests/stats_v1.json` → `quota_check`
+shows target vs actual val/test per variant and the per-variant minimum (9).
 
 ## Data preparation
 
@@ -90,11 +95,28 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 Inputs not in Git: `audit/files.csv` (output of `notebooks/00_dataset_audit.ipynb`, run read-only in
 Colab) and `data/` (provenance hashes, Commons thumbnails).
 
-Rules: unreadable files out; exact duplicates (same checksum) and near-duplicates (pHash Hamming
-distance ≤ 2, same class) keep one copy; pairs with distance ≤ 8 share a group and therefore a split;
-cross-class near-duplicates need an explicit decision in `config/data_prep.json`. Split: seed 42,
-70/15/15, stratified by variant (cheesecake/chocolate cake and each kebab variant appear in every
-split), group-aware.
+Rules:
+
+- unreadable files out; a manual exclusion also removes every copy of that image;
+- exact duplicates (same checksum) and near-duplicates (pHash distance ≤ 2, same class) keep one copy;
+- derived Commons files (crops, retouches) are listed in `config/data_prep.json`; a copy whose
+  original is also in the dataset is removed, and an unlisted file that looks derived stops the build;
+- groups = connected components of the pHash ≤ 8 graph **computed before any removal**, plus
+  derived pairs, plus one group per (canonical author ID, variant) for Commons; a group is never split;
+- cross-class near-duplicates need an explicit decision in `config/data_prep.json`;
+- split: seed 42, 70/15/15 per variant; a group goes to val/test only if its variant-count vector fits
+  the remaining quota of every variant in it; shortfalls are reported, never forced.
+- the build is deterministic: the same inputs in any order give byte-identical outputs.
+
+## Evaluation plan (batch 3, not started)
+
+- Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,
+  per-variant kebab recall, confusion matrix, with bootstrap confidence intervals (kebab test is small).
+- Temperature scaling and the "not sure" threshold are chosen on `val` only, never on `test`.
+- Source check: the same test photos at full frame and cropped to the dish; kebab errors inspected.
+- **Phone challenge set**: a small set of the user's own phone photos covering all five classes and the
+  kebab variants, never used for training or tuning; it measures the source gap (Commons vs Food-101
+  vs real phone photos). Size and collection are decided later; it is not part of this batch.
 
 ## Known limitations
 

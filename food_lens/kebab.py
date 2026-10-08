@@ -7,7 +7,8 @@ import re
 
 DONER_ROOTS = {"Category:Döner kebab", "Category:Shawarma"}
 # Minced meat shaped on a skewer.
-MINCED = re.compile(r"adana|koobideh|kubideh|kobideh|seekh|sheekh|lula|köfte|kofte|kofta|beyti|urfa|kıyma|kebab-e|sheftalia",
+# "Kebab-e …" alone is not a hint: kebab-e barg is sliced meat (skewered).
+MINCED = re.compile(r"adana|koobideh|kubideh|kobideh|seekh|sheekh|lula|köfte|kofte|kofta|beyti|urfa|kıyma|sheftalia",
                     re.IGNORECASE)
 
 

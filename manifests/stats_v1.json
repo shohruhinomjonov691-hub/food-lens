@@ -24,119 +24,205 @@
     "same_class_grouped_only": 0,
     "cross_class_pairs": 1
   },
-  "multi_member_groups": 39,
-  "included": 5364,
-  "excluded": 176,
+  "derived_copies_removed": 2,
+  "multi_member_groups": 37,
+  "largest_groups": [
+    57,
+    19,
+    8,
+    6,
+    6
+  ],
+  "included": 5360,
+  "excluded": 178,
   "per_class": {
     "dessert": {
       "train": 1398,
-      "val": 300,
       "test": 300,
+      "val": 300,
       "total": 1998
     },
     "hamburger": {
-      "train": 699,
-      "test": 149,
+      "test": 150,
+      "train": 698,
       "val": 150,
       "total": 998
     },
     "hot_dog": {
-      "train": 698,
-      "val": 149,
+      "train": 697,
       "test": 150,
+      "val": 150,
       "total": 997
     },
     "kebab": {
-      "train": 260,
-      "val": 56,
+      "train": 256,
       "test": 56,
-      "total": 372
+      "val": 56,
+      "total": 368
     },
     "pizza": {
       "train": 699,
-      "test": 150,
       "val": 150,
+      "test": 150,
       "total": 999
     }
   },
   "per_source_folder": {
     "cheesecake": {
       "train": 700,
+      "test": 150,
+      "val": 150
+    },
+    "chocolate_cake": {
+      "train": 698,
       "val": 150,
       "test": 150
     },
-    "chocolate_cake": {
-      "val": 150,
-      "test": 150,
-      "train": 698
-    },
     "hamburger": {
-      "train": 699,
-      "test": 149,
+      "test": 150,
+      "train": 698,
       "val": 150
     },
     "hot_dog": {
-      "train": 698,
-      "val": 149,
-      "test": 150
+      "train": 697,
+      "test": 150,
+      "val": 150
     },
     "kebab_commons": {
-      "train": 260,
-      "val": 56,
-      "test": 56
+      "train": 256,
+      "test": 56,
+      "val": 56
     },
     "pizza": {
       "train": 699,
-      "test": 150,
-      "val": 150
+      "val": 150,
+      "test": 150
     }
   },
   "per_variant": {
     "dessert/cheesecake": {
       "train": 700,
+      "test": 150,
+      "val": 150
+    },
+    "dessert/chocolate_cake": {
+      "train": 698,
       "val": 150,
       "test": 150
     },
-    "dessert/chocolate_cake": {
+    "hamburger/hamburger": {
+      "test": 150,
+      "train": 698,
+      "val": 150
+    },
+    "hot_dog/hot_dog": {
+      "train": 697,
+      "test": 150,
+      "val": 150
+    },
+    "kebab/doner_shawarma": {
+      "train": 41,
+      "test": 9,
+      "val": 9
+    },
+    "kebab/minced_skewer": {
+      "train": 58,
+      "val": 13,
+      "test": 13
+    },
+    "kebab/skewered": {
+      "train": 157,
+      "val": 34,
+      "test": 34
+    },
+    "pizza/pizza": {
+      "train": 699,
+      "val": 150,
+      "test": 150
+    }
+  },
+  "quota_check": {
+    "cheesecake": {
+      "total": 1000,
+      "target_val": 150,
+      "target_test": 150,
+      "val": 150,
+      "test": 150,
+      "train": 700
+    },
+    "chocolate_cake": {
+      "total": 998,
+      "target_val": 150,
+      "target_test": 150,
       "val": 150,
       "test": 150,
       "train": 698
     },
-    "hamburger/hamburger": {
-      "train": 699,
-      "test": 149,
-      "val": 150
-    },
-    "hot_dog/hot_dog": {
-      "train": 698,
-      "val": 149,
-      "test": 150
-    },
-    "kebab/doner_shawarma": {
-      "train": 43,
+    "doner_shawarma": {
+      "total": 59,
+      "target_val": 9,
+      "target_test": 9,
       "val": 9,
-      "test": 9
+      "test": 9,
+      "train": 41,
+      "minimum": 9,
+      "minimum_met": true
     },
-    "kebab/minced_skewer": {
+    "hamburger": {
+      "total": 998,
+      "target_val": 150,
+      "target_test": 150,
+      "val": 150,
+      "test": 150,
+      "train": 698
+    },
+    "hot_dog": {
+      "total": 997,
+      "target_val": 150,
+      "target_test": 150,
+      "val": 150,
+      "test": 150,
+      "train": 697
+    },
+    "minced_skewer": {
+      "total": 84,
+      "target_val": 13,
+      "target_test": 13,
       "val": 13,
       "test": 13,
-      "train": 60
+      "train": 58,
+      "minimum": 9,
+      "minimum_met": true
     },
-    "kebab/skewered": {
-      "train": 157,
-      "test": 34,
-      "val": 34
-    },
-    "pizza/pizza": {
-      "train": 699,
+    "pizza": {
+      "total": 999,
+      "target_val": 150,
+      "target_test": 150,
+      "val": 150,
       "test": 150,
-      "val": 150
+      "train": 699
+    },
+    "skewered": {
+      "total": 225,
+      "target_val": 34,
+      "target_test": 34,
+      "val": 34,
+      "test": 34,
+      "train": 157,
+      "minimum": 9,
+      "minimum_met": true
     }
+  },
+  "commons_authors_per_variant": {
+    "doner_shawarma": 47,
+    "minced_skewer": 60,
+    "skewered": 116
   },
   "exclusion_reasons": {
     "near duplicate": 6,
     "not a food photo": 2,
     "Bing scrape": 68,
+    "derived copy": 2,
     "out of scope": 100
   }
 }

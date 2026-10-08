@@ -31,7 +31,8 @@ QUEUE_COLUMNS = ("pageid", "title", "variant", "auto_status", "note", "phash", "
 ACCEPTED_COLUMNS = ("pageid", "title", "page_url", "original_url", "original_sha1", "width", "height",
                     "author", "credit", "license", "license_url", "attribution_required", "root", "category",
                     "variant", "phash")
-REVIEW_COLUMNS = ("pageid", "title", "page_url", "license", "variant", "decision", "reason")
+REVIEW_COLUMNS = ("pageid", "title", "page_url", "license", "variant", "decision", "reason",
+                  "initial_decision", "initial_variant", "initial_reason")
 DEFAULT_ROOT = "Category:Skewered kebabs"  # rows collected before the "root" column existed
 REJECT_CODES = {
     "scene": "kebab is not the main subject (people, grill or street scene)",
@@ -153,6 +154,13 @@ def cmd_finalize(args):
     if bad_variants:
         problems.append(f"unknown variants in variant_override: {bad_variants}")
     reviewed = {str(p) for p in review["reviewed"]}
+    # Later re-checks never overwrite the first decision; both are kept in the review CSV.
+    revisions = {str(r["pageid"]): r for r in review.get("revisions", [])}
+    for pid, r in revisions.items():
+        if r["decision"] not in ("accept", "reject") or (r.get("variant") and r["variant"] not in VARIANTS["kebab"]):
+            problems.append(f"bad revision for {pid}: {r}")
+        if not r.get("reason") or not r.get("evidence"):
+            problems.append(f"revision for {pid} needs a reason and evidence")
     for q in queue:
         c = candidates[q["pageid"]]
         variant = overrides.get(q["pageid"], q["variant"])
@@ -165,12 +173,21 @@ def cmd_finalize(args):
                 f" (checked: {q['note']})" if q["note"] else "")
         else:
             decision, reason = "pending", "not reviewed yet"
+        initial = {"initial_decision": "", "initial_variant": "", "initial_reason": ""}
+        rev = revisions.get(q["pageid"])
+        if rev:
+            if q["auto_status"] == "reject":
+                problems.append(f"revision for {q['pageid']} overrides an automatic reject: {q['note']}")
+            initial = {"initial_decision": decision, "initial_variant": variant, "initial_reason": reason}
+            decision, variant = rev["decision"], rev.get("variant") or variant
+            reason = f"revised {rev['date']}: {rev['reason']} (evidence: {rev['evidence']})"
         decisions.append({"pageid": q["pageid"], "title": q["title"], "page_url": c["page_url"],
-                          "license": c["license"], "variant": variant, "decision": decision, "reason": reason})
+                          "license": c["license"], "variant": variant, "decision": decision, "reason": reason,
+                          **initial})
         if decision == "accept":
             accepted.append({**{k: c.get(k, "") for k in ACCEPTED_COLUMNS},
                              "root": c.get("root") or DEFAULT_ROOT, "variant": variant})
-    unknown = (set(rejects) | set(overrides)) - {q["pageid"] for q in queue}
+    unknown = (set(rejects) | set(overrides) | set(revisions)) - {q["pageid"] for q in queue}
     if unknown:
         problems.append(f"review refers to pageids that are not candidates: {sorted(unknown)}")
     if problems:
