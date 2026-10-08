@@ -54,6 +54,25 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
   wherever these images are shown.
 - The earlier Bing-scraped kebab images are **not used**: their licenses could not be verified.
 
+### Dataset v1 (manifest_v1, seed 42)
+
+| Class / variant | Train | Val | Test | Total |
+| --- | ---: | ---: | ---: | ---: |
+| dessert / cheesecake | 700 | 150 | 150 | 1000 |
+| dessert / chocolate_cake | 698 | 150 | 150 | 998 |
+| hamburger | 699 | 150 | 149 | 998 |
+| hot_dog | 698 | 149 | 150 | 997 |
+| kebab / skewered | 157 | 34 | 34 | 225 |
+| kebab / minced_skewer | 60 | 13 | 13 | 86 |
+| kebab / doner_shawarma | 43 | 9 | 9 | 61 |
+| pizza | 699 | 150 | 150 | 999 |
+| **Total** | **3754** | **805** | **805** | **5364** |
+
+Food-101 part: 5000 Drive files, all byte-identical to the official archive
+([`manifests/food101_provenance_v1.json`](manifests/food101_provenance_v1.json)); 8 removed (6 near
+copies, 2 copies of an event flyer). Kebab: 372 Commons photos accepted out of 1006 candidates, each
+looked at; döner/shawarma is the smallest variant.
+
 ## Data preparation
 
 ```bash
@@ -84,8 +103,11 @@ split), group-aware.
   the same resolution does not remove this. Evaluation must check kebab errors and confusions
   explicitly; more diverse kebab photos are the real fix.
 - Food-101 training images were intentionally not cleaned by its authors and contain some label noise.
-- `dessert` has about twice as many images as the other Food-101 classes; training uses class weights
-  and reports macro-F1.
+- `dessert` has about twice as many images as the other Food-101 classes, and `kebab` (372) about a
+  third; training uses class weights and reports macro-F1 and per-class recall.
+- Kebab test has only 56 images (döner/shawarma 9), so kebab metrics have wide uncertainty.
+- Commons photos are grouped by author within a variant, so one photographer's series never spans
+  train and test. Food-101 has no author information.
 
 ## Layout
 

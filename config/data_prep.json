@@ -31,5 +31,15 @@
       "decision": "keep_grouped",
       "note": "different photos (plated burger vs hot dog on paper), pHash d=8; visually checked 2026-10-09"
     }
-  ]
+  ],
+  "group_commons_by_author": true,
+  "kebab_collection": {
+    "target_total": 200,
+    "stop_rule": "Stop collecting when every kebab variant has >=50 accepted images from >=8 source categories and >=8 authors, so val and test each get >=9 images per variant. Döner/shawarma was collected as one capped, round-robin-by-category batch (--max-new 240) and fully reviewed; the rule was met, so the remaining 505 license-passing döner files were not collected.",
+    "passes": {
+      "skewered": "all 718 files in Category:Skewered kebabs (depth 3, döner excluded) collected and reviewed",
+      "doner": "Category:Döner kebab + Category:Shawarma: 793 new files found, 745 passed license/size checks, 240 collected and reviewed"
+    },
+    "reviewed": "2026-10-09, by Claude Code from contact sheets; reasons per file in manifests/kebab_commons_review.csv"
+  }
 }

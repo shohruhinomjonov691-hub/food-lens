@@ -143,10 +143,34 @@ def download(url):
     raise RuntimeError(f"download failed: {url}")
 
 
+def select(rows, cached, max_new):
+    """Round-robin over categories so a capped pass still covers many sources.
+
+    Within a category, files whose thumbnail is already on disk come first (no new download),
+    then by pageid. max_new=0 keeps every file that passed the checks.
+    """
+    by_category = {}
+    for row in rows:
+        if not row["auto_reject"]:
+            by_category.setdefault(row["category"], []).append(row)
+    for items in by_category.values():
+        items.sort(key=lambda r: (str(r["pageid"]) not in cached, int(r["pageid"])))
+    queues = [by_category[c] for c in sorted(by_category)]
+    picked = []
+    while any(queues) and (not max_new or len(picked) < max_new):
+        for q in queues:
+            if q and (not max_new or len(picked) < max_new):
+                picked.append(q.pop(0))
+    return picked
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pass", dest="pass_name", choices=sorted(PASSES), default="skewered")
     parser.add_argument("--append", action="store_true", help="keep candidates.csv rows; skip known files")
+    parser.add_argument("--max-new", type=int, default=0,
+                        help="collect at most this many new files that pass the license checks (0 = all), "
+                             "taken round-robin across categories for diversity")
     args = parser.parse_args()
     roots, excluded = PASSES[args.pass_name]
     os.makedirs(os.path.join(OUT, "thumbs"), exist_ok=True)
@@ -166,7 +190,7 @@ def main():
     for page in metadata(new_titles):
         info = page["imageinfo"][0]
         meta = info.get("extmetadata", {})
-        row = {
+        rows.append({
             "pageid": page["pageid"],
             "title": page["title"],
             "category": files[page["title"]][0],
@@ -186,30 +210,35 @@ def main():
             "thumb_url": info.get("thumburl", ""),
             "thumb_file": "", "thumb_sha256": "", "thumb_format": "", "phash": "",
             "auto_reject": license_decision(meta, info),
-        }
-        if not row["auto_reject"]:
-            # Never re-download a thumbnail that is already on disk.
-            cached = [n for n in os.listdir(os.path.join(OUT, "thumbs")) if n.startswith(f"{row['pageid']}.")]
-            if cached:
-                with open(os.path.join(OUT, "thumbs", cached[0]), "rb") as f:
-                    data = f.read()
-            else:
-                data = download(row["thumb_url"])
-                time.sleep(0.3)
+        })
+    print(f"Metadata: {len(rows)} files, {sum(not r['auto_reject'] for r in rows)} pass license/size checks", flush=True)
+
+    thumbs_dir = os.path.join(OUT, "thumbs")
+    cached = {n.split(".")[0]: n for n in os.listdir(thumbs_dir)}
+    passing = select(rows, cached, args.max_new)
+    not_selected = sum(1 for r in rows if not r["auto_reject"]) - len(passing)
+    rows = [r for r in rows if r["auto_reject"]] + passing  # unselected files are simply not collected
+    for i, row in enumerate(passing, 1):
+        name = cached.get(str(row["pageid"]))
+        if name:  # never re-download a thumbnail that is already on disk
+            with open(os.path.join(thumbs_dir, name), "rb") as f:
+                data = f.read()
+        else:
+            data = download(row["thumb_url"])
+            time.sleep(0.3)
             fmt = sniff(data[:16])
-            ext = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}.get(fmt, ".bin")
-            name = f"{row['pageid']}{ext}"
-            if not cached:
-                with open(os.path.join(OUT, "thumbs", name), "wb") as f:
-                    f.write(data)
-            row.update(thumb_file=name, thumb_sha256=hashlib.sha256(data).hexdigest(), thumb_format=fmt)
-            try:
-                row["phash"] = f"{phash64(load_rgb(data)):016x}"
-            except Exception as exc:
-                row["auto_reject"] = f"decode: {type(exc).__name__}"
-        rows.append(row)
-        if len(rows) % 50 == 0:
-            print(f"  {len(rows)} files processed", flush=True)
+            name = f"{row['pageid']}{ {'JPEG': '.jpg', 'PNG': '.png', 'WEBP': '.webp'}.get(fmt, '.bin') }"
+            with open(os.path.join(thumbs_dir, name), "wb") as f:
+                f.write(data)
+        row.update(thumb_file=name, thumb_sha256=hashlib.sha256(data).hexdigest(), thumb_format=sniff(data[:16]))
+        try:
+            row["phash"] = f"{phash64(load_rgb(data)):016x}"
+        except Exception as exc:
+            row["auto_reject"] = f"decode: {type(exc).__name__}"
+        if i % 50 == 0:
+            print(f"  {i} selected files ready", flush=True)
+    print(f"Selected {len(passing)} files ({sum(str(r['pageid']) in cached for r in passing)} thumbnails reused); "
+          f"{not_selected} passing files not collected (cap --max-new={args.max_new})")
 
     columns = list(rows[0]) if rows else list(existing[0])
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -217,7 +246,7 @@ def main():
         writer.writeheader()
         writer.writerows([{c: r.get(c, "") for c in columns} for r in existing + rows])
     ok = sum(1 for r in rows if not r["auto_reject"])
-    print(f"Done: {len(rows)} new files, {ok} passed license/size checks and are ready for review; "
+    print(f"Done: {len(rows)} new rows, {ok} ready for review; "
           f"{len(existing) + len(rows)} rows in candidates.csv")
     return 0
 

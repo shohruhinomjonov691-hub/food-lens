@@ -1,0 +1,17 @@
+{
+  "checked": "2026-10-09",
+  "archive_url": "https://data.vision.ee.ethz.ch/cvl/food-101.tar.gz",
+  "archive_content_length": 4996278331,
+  "method": "streamed with scripts/food101_provenance.py (archive not stored); SHA-256 of every image in the 5 source folders compared with audit/files.csv (Drive copy)",
+  "official_images_in_source_folders": 5000,
+  "official_split": {
+    "train": 3750,
+    "test": 1250
+  },
+  "drive_files_byte_identical": 5000,
+  "drive_files_differing": 0,
+  "drive_files_missing_from_official": 0,
+  "license_agreement_sha256": "48c39411ce18a57fb5a945d0101d41eb602486a0be1dd259559775d98f74d0c9",
+  "license_agreement_text": "LICENSE AGREEMENT\n=================\n - The Food-101 data set consists of images from Foodspotting [1] which are not\n   property of the Federal Institute of Technology Zurich (ETHZ). Any use beyond\n   scientific fair use must be negociated with the respective picture owners\n   according to the Foodspotting terms of use [2].\n\n[1] http://www.foodspotting.com/\n[2] http://www.foodspotting.com/terms/",
+  "note": "hamburger/3578279.jpg and hamburger/3783650.jpg are byte-identical inside the official archive (train split); both are an event flyer, not food, and are excluded."
+}

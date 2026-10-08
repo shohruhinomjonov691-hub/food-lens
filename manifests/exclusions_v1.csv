@@ -1,0 +1,177 @@
+source,source_folder,location,checksum,reason
+food101,chocolate_cake,chocolate_cake/51717.jpg,sha256:8802526f1e1c1eb175819e5963c8ed5a6b755f420e1d1bdbfc7ac8c7a566009d,near duplicate (pHash d<=2) of chocolate_cake/49494.jpg
+food101,chocolate_cake,chocolate_cake/55122.jpg,sha256:b532a5635900759376f2f529aa0396ff844326ae2f41472e2ebe20edd80f5c11,near duplicate (pHash d<=2) of chocolate_cake/49494.jpg
+food101,hamburger,hamburger/3578279.jpg,sha256:a36278a3acab370553ca36ab48ee3d95bd5960907d75f2b96c49668ebf997d9c,not a food photo: event flyer (text poster); byte-identical pair 3578279/3783650 in the official Food-101 train split (visually checked 2026-10-09)
+food101,hamburger,hamburger/3783650.jpg,sha256:a36278a3acab370553ca36ab48ee3d95bd5960907d75f2b96c49668ebf997d9c,not a food photo: event flyer (text poster); byte-identical pair 3578279/3783650 in the official Food-101 train split (visually checked 2026-10-09)
+food101,hot_dog,hot_dog/1051643.jpg,sha256:4b3da6eb2a3384178ab8b5a8fe2d5ad22d25a926f3d9eb85cec08c7bd4358ca8,near duplicate (pHash d<=2) of hot_dog/1051628.jpg
+food101,hot_dog,hot_dog/3497633.jpg,sha256:6f0b073e703e1939e4b3fb311499e79ffbfd7a376e8800cc8c092ba939daccbe,near duplicate (pHash d<=2) of hot_dog/1335350.jpg
+food101,hot_dog,hot_dog/413426.jpg,sha256:a424cff79b43a889e1436dfc7f1c5bfa12ceecc9934b940725a74ea715ab1c3a,near duplicate (pHash d<=2) of hot_dog/410713.jpg
+food101,kebab,kebab/Image_1.jpg,sha256:b03409009ab548a499d5dd42e73d5ef70a82b54bf04dbaa7c8e048095e438480,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_10.jpg,sha256:0122f600d07e3c88b3f8f537ceddb37734001c979894551c8a5f67590db3d955,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_11.jpg,sha256:81c8112e3c0561e8aa5da2e7174b52be1a055b90ff6a4a776f28c3e5e97c0088,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_12.jpg,sha256:2025f7226efca509ec4548fb1f693db5389328d5576b180ac1e07482c1428861,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_13.jpg,sha256:4aba39b5fa68a1292ac3bc4e3ba2ea0081489306042725bbe4af8b56f530c702,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_14.jpg,sha256:453a861c6af0355e5ef19bb4686043c9b25d7b8d6640627bea32d3769accb3c0,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_15.png,sha256:032a071dbeda7e54b7fd11736e13abcadb27e49e242bde8ffacf3b91dea68618,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_16.jpg,sha256:301e7d36bb2ee1ce561e24dbb760d9ac22fa3ce56e8f3f1f52fdc7d5228386f8,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_17.jpg,sha256:d44e85c25ec793717a732e3482607f71a2dc356980482aa66888c6c74bfe286a,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_18.jpg,sha256:e9764a4409586a36dcfb279348fcd4c92ed086bed2380d8bc7ede9479e621353,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_19.jpg,sha256:0893c2d3a7607698615cf8a91595431e2e645601c0c90e17b76ca123860209a0,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_2.jpg,sha256:6b3b93661e6080d2dd0826c81e0a82cbbc364e24848d610cba9625ec9f686a06,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_20.jpg,sha256:243db83a52b2fa02ca526208609523257bd230e956a09e6d8592eee26128980c,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_21.jpg,sha256:4124a528a3406b2461550bcafb0069e3a85ebac75dcdd4cd00dbf40f8ef8c9da,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_22.jpg,sha256:bbc26635bbd627135ace0cfbf8fadcd6a87f3d5b9dc8c61cc2a1890e5ddd2a69,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_23.jpg,sha256:7b8fc9f5b422a1766196454aeaa9db30f4d756042afd1af11523b4de9b1aaa27,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_24.jpg,sha256:59a602ac1468f72293ff0ab18cb8bf585079d3559b591ad92b0ebbdf7fb44c74,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_25.png,sha256:f3949ec0c8aff6b62a75a3f9a25fe2d9728c97b1ae2011f4e49dbf3e106f40ba,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_26.png,sha256:c984b650f8d03580ba4ec7f22f258168baa2230fe2025a2f6c1ced0d2d80d228,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_27.png,sha256:34b023b8bb445e5f3172be86a77723ef6e232d17d1bc50af26af15dd831d1a8d,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_28.jpg,sha256:6978d46b80fb7cb7727b36e4a60f1843f7ef72fd2c9f2669c034cdd21fc59571,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_29.jpeg,sha256:937979e73dfad44500653467cbe7022f9659340e3bbe849041b04488ae7e4a86,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_3.jpg,sha256:0533a19afb1782c3976c2ed9c72eae1feba9d339e9186d72341376ffb816fdf1,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_30.jpg,sha256:dd5da3d236c620a332e29588effecf9a460f4a1cf2a66e5afaa78c5affc82fa8,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_31.jpeg,sha256:d727b5edeb7d3c12bdc8e3da8ff15cf102687aac2960670cd9a4f74bec853baa,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_32.jpg,sha256:b7aecf1fcb02bb680ac6709c657945655372cf6c86c16e735961c8c720435be5,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_33.jpg,sha256:cc6a02af339025da44a716dc8fe41d56e52d5e41b881db1f559361649740779f,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_34.jpg,sha256:d9fa245b491f8d392d0320c051f774722daf4550cdbe4d09e614266258e92733,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_35.jpg,sha256:cc93eb12ec8250b6f29fe8af3abd4c67c8bbeb81b8d02c83881ffe924ede5777,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_36.jpg,sha256:0bff77208351703a5433457959698a02a4bcdaa63fe013d98b0539cb2b2dfe03,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_37.jpg,sha256:f684c61378ecb157b2d9de6ee42a73be15599b3994e27d33f00349908c3be4e6,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_38.jpg,sha256:7f71267ba035007ec034f954560a68fd9758fcc3345e864e78f4359a482998b7,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_39.jpg,sha256:9a814b09dea55d3fd2f1fd3d79ede7fb1b27286a3ea5b0a61cd507319e151a80,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_4.jpg,sha256:1972268b67f9c13bf62c367e7a68fb28f7cc5ffb5d283f17273af199bb7fce8c,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_40.jpg,sha256:a65ff9e4798bf7f13a3aafcef9968bc30f083b79ebaf51f8a5e61bd15d3a2a4c,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_41.jpg,sha256:058d396191c90b893e888d6ddd154f34c40bf87cc79b8cab983ed964deaa94b2,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_42.png,sha256:850f8f2ac96f8a88757ee68a5e18b8706e030c1a91dc5de21aa5f9b50b20df37,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_43.jpg,sha256:e926692c2fcb7371847cee322359ab49a0d30764e48581182ee491503ced7c55,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_44.jpg,sha256:617b5da43fa4102b470a43dd2620128d9f7aabf8f673651eaa301f70693914eb,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_45.jpg,sha256:786241752506e4fa6d5d15fa4a7652059d240ca67f92ee8139420aacc25bf373,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_46.png,sha256:e1881052819d3541b456d599107a4d3cdde1579cf22fe69cfc7e4e7a9f5d16ca,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_47.png,sha256:0f1428614354ac0e950a8f22f406f03c69f66d14fb0b8467397bbf08b457e196,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_48.jpg,sha256:5187004589cf02292eb4ab4c4616cb1df4acbe2da3740151fe172be6e83928c9,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_49.jpg,sha256:38931275fd4375200a1baddcd4e54c52f8f63187277e81e80d05836f0e8bb122,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_5.jpg,sha256:b2bf8a79739f036395cd3d4c85d961b179239bf0e923ab6d68c07f9339c197f4,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_50.jpg,sha256:796bfd81e71f09704827a02b28ac179222e18977714b668518cc1f58fe274fac,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_51.jpg,sha256:092b650376fdd510efefc9a7446ca5642a1aece7b067c9ff36c177ffafc605dd,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_52.jpg,sha256:bcffe49580ffe7cad6b0a70272505650925075001a4f4e14df685b47843a2307,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_53.jpg,sha256:8aa3027267c82f0d389f1e20b3f5aa5de512958113e368f82951705dba9f5c1d,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_54.jpg,sha256:ec5882a98a2e0df97ecce76904eb4cad22611e8a5ef1e05e34ab50643caf52e9,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_55.jpg,sha256:5e5ef533209c759d7aa7d99417badb577a7d2c12c3cb0de7ebade3532b5fd249,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_56.jpg,sha256:51a6180d9850398a95a891678660857f9ed53bece91df00f805547ff92e2fc1e,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_57.jpg,sha256:2cc24b85bc729c15b80885911701fb57e4d6c70a8b9baba1671ca6fdae56baa5,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_58.jpg,sha256:cf545dd8b1f9ca8f5e673f89a31b349c3d21bdcaac94bff24f6ae7ed007007ce,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_59.jpg,sha256:4d725caad70a141077e23124e3d21bfa9398c258316d225c3497bd9ec8c43f10,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_6.jpg,sha256:34b6ee5f0ba8dc28526e3d0d4238b9aaf153d0642c7170be297da614189038a4,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_60.jpg,sha256:df4eef3a75b4e2d15ed2fe4a3ef4afc80d0562d8850451ec8fc2eb2fc1bcf4c9,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_61.jpg,sha256:ba2591ee124f6728d11fb82c55ba2d8e891ad4131870b4bdb13041b100c42c67,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_62.jpg,sha256:12c5fbc1b93272c86d00f1ffb67c3861010910dec752aec8bcd8ea904cf9486b,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_63.png,sha256:ef4e205606275e4c7e88c7fbbe9a22b139f06a623ccf2d8716d9cb5e29f4c587,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_64.jpg,sha256:9e36e45b9fefd451a195460672af35b8f5afc9041bef9d145ed33f39e051b25c,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_65.png,sha256:6608a9bd6c85c17db30945a440a72e931facab9bd629827d7e54f2804993822c,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_66.jpg,sha256:60b4ac44e9090064bd66d88eec6f6d3cbe7d377716e842e42de5febe5bae6806,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_67.jpg,sha256:b658b39c9c2c3075f9c625a6201f4428b0827cac50651ceac532a249cddeeb01,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_68.jpg,sha256:3b467f1785b113e360ec220a130f185f62e3f0a7a964f94df6deb55a48c3f1c1,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_7.jpg,sha256:ec0692b69ac9eb4cd10adedf197f7bf2efc628459539e2da176488167ae343d1,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_8.jpg,sha256:c4db1a4263aedab091b65ab5987b2eae82364e6e058637b084d67f9c0fc9d7ca,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,kebab,kebab/Image_9.jpg,sha256:2106235264459cebe2f266d9d4cd5775116a0bf52f5276425af91469909d8a02,Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons
+food101,pizza,pizza/1576248.jpg,sha256:c05b4d6e3bcd7b8607c1c59904092865810099ddd1bec493dc36f98b2cf902ed,near duplicate (pHash d<=2) of pizza/1088332.jpg
+food101,plov,plov/Image_1.png,sha256:dc2a8dc92c919892f38c1cab5dca441484a88cc8fc110d4c9fe382a3b6ac06fc,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_10.png,sha256:5ecdea7b45bd7b1fd7e83581f35ec863618f0f7b1e9b81b176b280d71100cec1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_100.jpg,sha256:c9f72af56333b870a78f32803000f2461643901c8ba91e7ad8aecdda273a9cf9,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_11.png,sha256:26e8521c2a9ed05ba4b06b5bf1cce2de248398c808fd7c2d5c0b040b9027b8c3,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_12.png,sha256:a1f03c2a8206ba5be28f35c7fdcc00e6904aeb1d173f8edd19ff44368d3fa842,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_13.png,sha256:580561f9ace11eb51d513d481fa66fcf3514811061c712e3b5aeab9b428e63ba,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_14.png,sha256:d74468811dae575f026ea98fe3a81849ca82a0d82fd5221c53966df5d614e251,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_15.png,sha256:faa783c24ebb08facf5c512785319e0971a2cad2b28236882caee7849aa1bf37,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_16.png,sha256:0c5a8721eaf6d6ee1ebcc0dea6c61bb1c8d5cccdb879891c9635e59c36a565e6,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_17.jpg,sha256:f035e653171030e64db5a71c890884ae73baeecdcf3108b094eabcaffc88aef1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_18.jpg,sha256:6c91350ffe6da27d515d5a08f3555d4f14382ec202ec60d6e1aca540c6e4cc68,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_19.png,sha256:3954d20a6e2cd621f19046513c02453aa215b4e918b00266ea35ef9c4cfad611,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_2.png,sha256:5e71d1b9c14bfcecec498a93a80071cc5b7f59bb8fda8b7701da49e40a082bc5,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_20.png,sha256:b3259d2fc83b8b7628c31d0563195e0fcfa098bd19d3d4e2cabfd3f42cc9a8a3,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_21.png,sha256:5fa938c50de9204cf4e0eed869ffc28b5762994fc3edec83bb6b6fde97919c0d,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_22.png,sha256:f6d17e101267d7e2b2ff51ee78a16fef69d86a902a9e9550a8cc8eead48a0a75,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_23.png,sha256:91adbee9dfde70c564a3e2a5497e821431ca8ff6dc85bfe459b5b4d9fe3c672f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_24.jpg,sha256:fd650812a41d3a5f1d73ed493dede3f0a1b47ddf210dee117b65d5efc8f27195,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_25.jpg,sha256:97ceb63b354408910d31cc1b592fe3f314c3d41776eefa8ba5fb9811d8b13e4e,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_26.png,sha256:7f885aa7fe79452d502f878acbd7d789a04e28dec42f8ebccd32fc36ae12bc75,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_27.jpg,sha256:37c2ae0875d8f5815bf675ec96ce02bf1cb7b75719160ccafcdca96336226a45,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_28.png,sha256:5c9eaa100b930f834441f837e7d34aac581cb7b01ddb15f1d3b214f9752db7a4,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_29.jpg,sha256:d368023b3c984f7a10498d970c6475e22ff3c17f82bc328e5169488d1c01ce60,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_3.jpg,sha256:1d9c968e82733b83278d101f59722e974126e60646ea4708c6a121bbb89b2f52,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_30.jpg,sha256:68356b4ffa1ed17deb4571d57accc3e6c305d8176edfd086dfbe80be1da7e9df,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_31.jpg,sha256:e91efac71a7c8cbc3da663267e3d8b58c687d893787a0bda05bb7f99a9882d66,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_32.jpg,sha256:fd32a0061815d8962e4b66bfe03230511eb07630543bf5b008731198b123f0b2,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_33.jpg,sha256:f0188ca9c9fbc78b11dd051c6476876ce44b394cb3feef715dbf4523a757b5f1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_34.png,sha256:835ad7804d198c8ff3997023cb3fd3ee885583475970dd40ba6da0209b8a6ce1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_35.png,sha256:e373707345b6ffa338e831e50b651c3f74f0c8f46400efcd57e183be80bfdc4f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_36.jpg,sha256:7779f75ca885cc554752b1c439adab2b4e37239a7f17d5e94d37c1ac08b9c70f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_37.jpg,sha256:b2ef653cf322e812024e8f89068725b12586cf02411e6f17af1d8cf632483113,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_38.jpeg,sha256:7c1c42aab3368065a6d4b2057ced3da4d611c8279f6e71b5d44b0a2e770946a7,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_39.jpg,sha256:bbc4e95baa9d13fec6182f70885c9b10e21fbc0ea66ac5952d7fcd5eb63a492c,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_4.jpg,sha256:9adec0e8e78b3ed484f86c721ec47e8334fdef6382b78df6e61fab9ec860967f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_40.png,sha256:d420c09ab50bcd41274df522d4e2a5a8cdc3f464f208639b015f54b9213c5545,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_41.jpg,sha256:f16311c0433818f334036216562fe27dba15efa35d723492c21ef8da3e69b666,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_42.jpg,sha256:b58e5d83ad058062e913557a96e4b0d376353070fba2a4d94f642ec2abc5d3cb,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_43.jpg,sha256:5d10b65d3dd95d612f2ef4efd65664a1ce0beed0546c3ebbd16cd03c50816037,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_44.jpg,sha256:b14fb71ec3fc2cbb0950bac14863af82638bde6c7872b85a5d38cd70584cf0f5,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_45.png,sha256:ed2b4cff5d86abc248afef14517c730a72af8e41d9229216630a52abd282310f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_46.jpg,sha256:2feae086a68ffb0ac856fd847f950e2e5adc4156105600a112b247a8eb2a3bf2,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_47.jpg,sha256:d601d93388f1b69a8aa1cf29c91e489e313ac29817fa98109f05c4b2b6a75e04,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_48.jpg,sha256:53f14f494db29267f2d8d78e2b2a550e3ef8b6838e8cf14f5e6d7e232c9eb65b,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_49.webp,sha256:f79a30780c582b2bd68d36f3fa83b46f122f0f2ffa597c09f4261d8165b224cd,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_5.png,sha256:7017bd21d0bf8b26c68c835dee84dad35924367894f76f0b1490d6ff4cf6ddfd,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_50.jpg,sha256:10c736efddb3c4ebf76a3a18ca3c9583edf329b58d1423b11fa857b90f0b2766,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_51.jpg,sha256:6fac395b352dcb18d254cd9064e8ee89ae94b8b73b04187e003bdfdbd797f465,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_52.jpg,sha256:bb94910df03f22514abf528a4373f7df869337a30a1b5367a29950d19c402de0,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_53.jpg,sha256:1ccf465bd4d08e98bfe3b795e01edecacaf65e7d7504e3f59bc502993846f827,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_54.jpg,sha256:da4c5fbf42b54aac447e4af47b77402d3d91e2919a1870c1861b84ea9412db19,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_55.jpg,sha256:c519f1a4dc4d8c1ee6731f53a8dbef0f081607bc597527f28f8ba1869388f60c,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_56.jpeg,sha256:3a4002cb79d50868408f84ea6092d96b7f4f0ad5d266da3d64aad1ef135b2207,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_57.jpg,sha256:e20a19a61e628e2ee8136747d0853f65958c877080ae88a4566b5ae8f67c0260,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_58.jpg,sha256:c29a45e82c9f5c954fd14ea3c6ef4016b53dc8cc1dbc013e75b48e1d16fec020,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_59.jpg,sha256:e9d7a45fde64ea2560848c492843b7cc8f86d332e0e17017b0a43782f9ace952,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_6.jpg,sha256:673c6deb27380e449fa0a03a4e45ecc03a275045f437649e2a3836ea324e778b,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_60.jpg,sha256:88744eea8acf35ca067d507a6e39553df6d979b1d1a0c0d441f7bdd21e5df483,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_61.jpg,sha256:ca9b736cc51fbaaec9986dc997f2463a39c5c73660e4a961c41eb5774631107c,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_62.png,sha256:ccf9c00d5b44bafc0b2ca7bb7e7d8975573e7b769d50d981fd9193a68cc5ba91,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_63.png,sha256:0582a1c4feaffa71c7fbe7554d042c4b68cd6126fda1ba22529fb4bfcb7a88f3,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_64.png,sha256:9e82a21c631e05e4a158e46d4f3bd78a5182036176428952d33c8fafca5f3e90,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_65.jpg,sha256:6e047e782020d88995c874a1fea9ba57fe524da5b80ae35a9496f36b39b1fe7f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_66.jpg,sha256:426576d228bfe6c016217d6edc22412cd4d7c5813dab018be9ca5ac4dbc5f63d,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_67.jpg,sha256:c3fac435308099daed81626d03047df6baef5f9ecda092c4291d87e2a83681a6,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_68.png,sha256:170cec5fc675deb118fda00f4ab9180c094871d40797c392f9d664aab47eb3f0,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_69.jpg,sha256:4dc685e05633d0d5c2ebf4890fb9e812b986091e01b74cabb98bdea2ddd03dc4,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_7.png,sha256:9aba511328a447c95557db5a7d10342f7fc83be4795c8445618330ee7bd3eee1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_70.jpg,sha256:d25d09e982d920e0094efdfbee4035d1c396d7485c78e0ae93885123a13e548a,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_71.jpg,sha256:f08d7dcba7492af352de599a0179adf46f1186a6fb23231c18b2002bef6ec88b,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_72.webp,sha256:58d323717935df09cb8d57b2ba2396a9616103dc7efbaeeb8e268fc89fa60863,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_73.jpg,sha256:d3f890e18dc7fa7ced686c91a8585e79e41aa95b35cc1feddab26337aeae1540,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_74.png,sha256:033693de21d30514d9b3a45d98ae0a7b7d60d39194efeae7a26a0874041d9e83,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_75.webp,sha256:c595a2242155c41428e490689fa29ae0341144dd2ac516957868747de71bf003,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_76.jpg,sha256:02c4d6b446b9fcafbf824f9011b6fdc94887c0ad9b5cc955e62e701332c27ba1,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_77.png,sha256:621507e66a01f6516a4ee3b5609eba0ccc1952236dd5984a882b87afdf9a5c82,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_78.webp,sha256:bba892702b0dfcb2e783cfa5960dbc977c7770467c782fbcab57bdbd7d6e1f19,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_79.jpg,sha256:70591ec29591a577471b8d2eb2b754c1d6a13f1ba6b5cda6d4c2f82b24500a7b,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_8.png,sha256:591c25393065896d7488632825d41a7b220813a7491530df0054559b04b1a44d,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_80.jpg,sha256:4db9838d617dac90e0a481afdd121b7a703161f656ca1763bae85f5486cfbd59,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_81.jpg,sha256:18b46b591cec6df1bec2f9f6e0c3e6254a44d9f49ea95f131785ef6d5ba76d0f,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_82.jpg,sha256:240f9d1f1a5462dc31dcc8a7e136d78b1c335ea02ed5a5e605ca0fa2c8cf25bb,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_83.jpg,sha256:353dce382b745e6b7568167fa2ec02cde0726f2884af7faadf00b60923b44121,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_84.jpg,sha256:ca73aa4c18935f826e5566df036e55a2c6f7e8c4f31008486cfbfd4b78cb7fa2,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_85.jpg,sha256:00a09848048a98da5c59fc918c178f685fd7ecbf5467d935aa8de2d35deb74a7,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_86.jpg,sha256:b9a32a4c2a71fbd2f80e9f9e31b8de7cc87935044dd25dfd335ff33122c0c2ec,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_87.jpg,sha256:2a96a0780fe4f2a41c9387ffa73117540bf721c188fdbfa4b04f59d6f5573284,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_88.jpg,sha256:d236b911f31f539584da58e9da88dbb6da0e6bc7b202a9fd2f450115ff8cd82e,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_89.jpg,sha256:6978412e18e843a85aedeeeb722f176c5600ad63799335021df88ac38571ef5d,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_9.jpg,sha256:564592f8a6ad3d49973b82b31336f5fb7181919d14381312c34e2a5cfe309e98,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_90.jpg,sha256:5b5b99a75a9e850919f0a2d9d3082e1e629957d7ef192f4b00d6e665d72f46be,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_91.jpg,sha256:79095daca318eea59018f805785e69f5a1363915b562fc63231810df90c3fd64,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_92.jpg,sha256:eebdf7c27b19fc3efbc49843dcb32bf2c08877268f18fe002bea58600f03a2f3,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_93.jpg,sha256:6daa43b06acde9ff0c44fa27373f67cb1ccccdb5b510771b0043751d136c09fc,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_94.jpg,sha256:21d8587389e38ec79e8e4e2bd2148159d09653478869d4d00cdb28d6500abe54,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_95.jpg,sha256:890db1a93add30fbb65f09d150f4944077e16e6ceecd6fb02f6e983c7e45e58d,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_96.jpg,sha256:b7137136b6fa0e9401eee12072141831c8cc038c583353a5cf9f432144eb5a5b,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_97.jpg,sha256:23a10502a73946b0ed67914d81daf35335d818a96df4992c853d7e6c9dbe6bff,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_98.jpg,sha256:4b0d4d08aeaa2662e7151fe45296c320e74141b6112d4266a3f2a3afdd633c62,out of scope (plov/pilaf removed from the 5-class scope)
+food101,plov,plov/Image_99.jpg,sha256:8d1abfa7df68d0ecdcc1c0415d95c48142b2f7336b0ce0a7fdae89c2872e8ae0,out of scope (plov/pilaf removed from the 5-class scope)

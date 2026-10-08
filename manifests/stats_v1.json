@@ -1,0 +1,142 @@
+{
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "food101_provenance": {
+    "byte_identical": 5000
+  },
+  "exact_duplicates": {
+    "pairs": 0,
+    "groups": 0,
+    "redundant_files": 0
+  },
+  "near_duplicates": {
+    "remove_max_distance": 2,
+    "group_max_distance": 8,
+    "same_class_removable": {
+      "pairs": 7,
+      "groups": 5,
+      "redundant_files": 6
+    },
+    "same_class_grouped_only": 0,
+    "cross_class_pairs": 1
+  },
+  "multi_member_groups": 39,
+  "included": 5364,
+  "excluded": 176,
+  "per_class": {
+    "dessert": {
+      "train": 1398,
+      "val": 300,
+      "test": 300,
+      "total": 1998
+    },
+    "hamburger": {
+      "train": 699,
+      "test": 149,
+      "val": 150,
+      "total": 998
+    },
+    "hot_dog": {
+      "train": 698,
+      "val": 149,
+      "test": 150,
+      "total": 997
+    },
+    "kebab": {
+      "train": 260,
+      "val": 56,
+      "test": 56,
+      "total": 372
+    },
+    "pizza": {
+      "train": 699,
+      "test": 150,
+      "val": 150,
+      "total": 999
+    }
+  },
+  "per_source_folder": {
+    "cheesecake": {
+      "train": 700,
+      "val": 150,
+      "test": 150
+    },
+    "chocolate_cake": {
+      "val": 150,
+      "test": 150,
+      "train": 698
+    },
+    "hamburger": {
+      "train": 699,
+      "test": 149,
+      "val": 150
+    },
+    "hot_dog": {
+      "train": 698,
+      "val": 149,
+      "test": 150
+    },
+    "kebab_commons": {
+      "train": 260,
+      "val": 56,
+      "test": 56
+    },
+    "pizza": {
+      "train": 699,
+      "test": 150,
+      "val": 150
+    }
+  },
+  "per_variant": {
+    "dessert/cheesecake": {
+      "train": 700,
+      "val": 150,
+      "test": 150
+    },
+    "dessert/chocolate_cake": {
+      "val": 150,
+      "test": 150,
+      "train": 698
+    },
+    "hamburger/hamburger": {
+      "train": 699,
+      "test": 149,
+      "val": 150
+    },
+    "hot_dog/hot_dog": {
+      "train": 698,
+      "val": 149,
+      "test": 150
+    },
+    "kebab/doner_shawarma": {
+      "train": 43,
+      "val": 9,
+      "test": 9
+    },
+    "kebab/minced_skewer": {
+      "val": 13,
+      "test": 13,
+      "train": 60
+    },
+    "kebab/skewered": {
+      "train": 157,
+      "test": 34,
+      "val": 34
+    },
+    "pizza/pizza": {
+      "train": 699,
+      "test": 150,
+      "val": 150
+    }
+  },
+  "exclusion_reasons": {
+    "near duplicate": 6,
+    "not a food photo": 2,
+    "Bing scrape": 68,
+    "out of scope": 100
+  }
+}

@@ -157,3 +157,31 @@ def test_deterministic(dataset):
     first = run(*copy.deepcopy(dataset))[0]
     second = run(*copy.deepcopy(dataset))[0]
     assert [(r["location"], r["split"]) for r in first] == [(r["location"], r["split"]) for r in second]
+
+
+def test_commons_author_groups_share_a_split(dataset):
+    rows, off, kebab = dataset
+    for k in kebab[:12]:
+        k["author"] = "Prolific Photographer"
+    config = copy.deepcopy(CONFIG)
+    config["group_commons_by_author"] = True
+    included, _, _ = run(rows, off, kebab, config)
+    same = [r for r in included if r.get("author") == "Prolific Photographer"]
+    assert len(same) == 12
+    for v in ("skewered", "minced_skewer", "doner_shawarma"):  # one group and one split per variant
+        rows_v = [r for r in same if r["variant"] == v]
+        assert len({r["group_id"] for r in rows_v}) == 1 and len({r["split"] for r in rows_v}) == 1
+
+
+def test_author_groups_do_not_cross_variants(dataset):
+    rows, off, kebab = dataset
+    for k in kebab:
+        k["author"] = "Same Person"
+    config = copy.deepcopy(CONFIG)
+    config["group_commons_by_author"] = True
+    included, _, stats = run(rows, off, kebab, config)
+    kebab_rows = [r for r in included if r["target"] == "kebab"]
+    assert len({(r["variant"], r["group_id"]) for r in kebab_rows}) == 3   # one group per variant
+    assert len({r["group_id"] for r in kebab_rows}) == 3
+    reasons = stats["exclusion_reasons"]
+    assert all(" of " not in k or k.startswith("out of scope") for k in reasons)

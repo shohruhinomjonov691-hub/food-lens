@@ -14,6 +14,7 @@ Usage: python scripts/prepare_manifest.py [--out-dir manifests] [...input overri
 import argparse
 import json
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 
@@ -143,6 +144,18 @@ def build(drive_rows, official_rows, commons_rows, config):
     for a, b, _ in pairs:
         if a in remaining and b in remaining:
             groups.union(a, b)
+    # Commons photos by the same author within one variant (often one photo series) also stay in
+    # one split, so test never shares a photographer's series with train. Grouping per variant keeps
+    # each variant's split quotas reachable.
+    if config.get("group_commons_by_author"):
+        first_by_author = {}
+        for row in included:
+            if row["source"] == "commons":
+                author = (row["author"].strip().lower(), row["variant"])
+                if author in first_by_author:
+                    groups.union(first_by_author[author], row["location"])
+                else:
+                    first_by_author[author] = row["location"]
     group_index = {root: f"g{i:05d}" for i, root in enumerate(sorted(groups.groups()))}
     for row in included:
         row["group_id"] = group_index[groups.find(row["location"])]
@@ -169,7 +182,7 @@ def build(drive_rows, official_rows, commons_rows, config):
                               for f in sorted({r["source_folder"] for r in included})},
         "per_variant": {f"{t}/{v}": dict(Counter(r["split"] for r in included if (r["target"], r["variant"]) == (t, v)))
                         for t, v in sorted({(r["target"], r["variant"]) for r in included})},
-        "exclusion_reasons": dict(Counter(e["reason"].split(" of ")[0].split(":")[0] for e in exclusions)),
+        "exclusion_reasons": dict(Counter(re.split(r" of [a-z_]+/| \(|:", e["reason"])[0] for e in exclusions)),
     }
     for c in CLASSES:
         stats["per_class"][c]["total"] = sum(stats["per_class"][c].get(s, 0) for s in SPLITS)
