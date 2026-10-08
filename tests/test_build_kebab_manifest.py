@@ -93,3 +93,30 @@ def test_mark_rejects_unknown_codes_and_cells(workdir):
     assert bkm.cmd_mark(args(sheets=["skewered_01"], reject=["skewered_01:9:raw"])) == 1
     assert bkm.cmd_mark(args(sheets=["skewered_01"], variant=["skewered_01:1:gyros"])) == 1
     assert bkm.cmd_mark(args(sheets=["nope_01"])) == 1
+
+
+def write_review(workdir, revisions):
+    review = {"reviewed": ["10", "11", "12"], "reject": {"11": "raw: x"}, "variant_override": {},
+              "revisions": revisions}
+    (workdir / "review.json").write_text(json.dumps(review))
+
+
+def test_revision_keeps_initial_decision(workdir):
+    write_review(workdir, [{"pageid": "11", "decision": "accept", "variant": "skewered", "reason": "cooked",
+                            "evidence": "640 px image", "date": "2026-10-09"}])
+    assert bkm.cmd_finalize(args()) == 0
+    d = {r["pageid"]: r for r in read(workdir / "manifests" / "kebab_commons_review.csv")}["11"]
+    assert d["decision"] == "accept" and d["initial_decision"] == "reject"
+    assert d["initial_reason"].startswith("manual: raw") and "640 px image" in d["reason"]
+
+
+@pytest.mark.parametrize("revision", [
+    {"pageid": "11", "decision": "accept", "reason": "cooked", "date": "2026-10-09"},                # no evidence
+    {"pageid": "11", "decision": "maybe", "reason": "x", "evidence": "y", "date": "2026-10-09"},
+    {"pageid": "11", "decision": "accept", "variant": "gyros", "reason": "x", "evidence": "y", "date": "d"},
+    {"pageid": "14", "decision": "accept", "reason": "x", "evidence": "y", "date": "d"},              # auto-reject
+    {"pageid": "99", "decision": "accept", "reason": "x", "evidence": "y", "date": "d"},              # unknown
+])
+def test_bad_revisions_fail(workdir, revision):
+    write_review(workdir, [revision])
+    assert bkm.cmd_finalize(args()) == 1

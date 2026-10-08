@@ -180,7 +180,7 @@ def cmd_finalize(args):
                 problems.append(f"revision for {q['pageid']} overrides an automatic reject: {q['note']}")
             initial = {"initial_decision": decision, "initial_variant": variant, "initial_reason": reason}
             decision, variant = rev["decision"], rev.get("variant") or variant
-            reason = f"revised {rev['date']}: {rev['reason']} (evidence: {rev['evidence']})"
+            reason = f"revised {rev.get('date', '')}: {rev.get('reason', '')} (evidence: {rev.get('evidence', '')})"
         decisions.append({"pageid": q["pageid"], "title": q["title"], "page_url": c["page_url"],
                           "license": c["license"], "variant": variant, "decision": decision, "reason": reason,
                           **initial})
