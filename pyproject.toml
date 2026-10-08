@@ -1,0 +1,20 @@
+[project]
+name = "food-lens"
+version = "0.1.0"
+description = "Food Lens: 5-class food photo classifier (dataset preparation, training, inference)"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pillow"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["food_lens"]

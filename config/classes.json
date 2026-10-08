@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "classes": [
+    "dessert",
+    "hamburger",
+    "hot_dog",
+    "kebab",
+    "pizza"
+  ],
+  "source_folders": {
+    "cheesecake": "dessert",
+    "chocolate_cake": "dessert",
+    "hamburger": "hamburger",
+    "hot_dog": "hot_dog",
+    "kebab": "kebab",
+    "pizza": "pizza",
+    "kebab_commons": "kebab"
+  },
+  "excluded_folders": [
+    "plov",
+    "pilaf"
+  ]
+}

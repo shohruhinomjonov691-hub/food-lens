@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Lens</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23C2410C'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23FFF8F0'/%3E%3C/svg%3E">
+<!-- Static design mockup. No upload, model or network calls: states are switched with the URL hash
+     (e.g. #state=result&lang=ko). See review.html and PLAN.md. -->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fbf6ef;          /* warm cream */
+  --surface: #ffffff;
+  --surface-2: #f6eee3;
+  --line: #eadfce;
+  --ink: #2b2118;         /* 15.7:1 on --surface */
+  --ink-2: #5f4f40;       /* 7.8:1 on --surface */
+  --muted: #7a6858;       /* 5.3:1 on --surface, 4.6:1 on --surface-2 */
+  --accent: #b93d0b;      /* terracotta, 5.6:1 on --surface */
+  --accent-ink: #ffffff;
+  --accent-soft: #fde9da;
+  --ok: #3f6212;
+  --ok-soft: #eef4e2;
+  --warn: #8a3b06;
+  --warn-soft: #fff1dc;
+  --err: #a1251b;
+  --err-soft: #fde7e4;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 8px 24px rgba(60, 40, 20, .07);
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; cursor: pointer; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+header { padding: 18px 0; }
+header .wrap { display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.brand svg { flex: none; }
+.brand b { font-size: 19px; letter-spacing: -.01em; }
+.tagline { color: var(--muted); font-size: 14px; margin-left: 4px; }
+.lang { margin-left: auto; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 3px; }
+.lang button { border: 0; background: transparent; color: var(--ink-2); padding: 5px 12px; border-radius: 999px; font-size: 13px; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* Steps */
+.steps { display: flex; gap: 6px; list-style: none; margin: 4px 0 18px; padding: 0; flex-wrap: wrap; }
+.steps li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.steps li + li::before { content: ""; width: 22px; height: 1px; background: var(--line); margin-right: 2px; }
+.steps .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); font-size: 12px; font-weight: 600; }
+.steps .done .n { background: var(--ok-soft); border-color: #cfe0b3; color: var(--ok); }
+.steps .now { color: var(--ink); font-weight: 600; }
+.steps .now .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* Layout */
+main .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.pane { padding: 20px; }
+h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 18px; }
+h3 { font-size: 14px; color: var(--ink-2); font-weight: 600; }
+p { margin: 6px 0 0; color: var(--ink-2); }
+.small { font-size: 13px; color: var(--muted); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; }
+.btn:focus-visible, .lang button:focus-visible, .chip:focus-visible { outline: 3px solid #f2a97e; outline-offset: 2px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+/* Upload */
+.drop { border: 2px dashed #e2cdb3; border-radius: 14px; background: var(--surface-2); padding: 34px 20px; text-align: center; }
+.drop .icon { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 16px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.drop .or { display: block; margin: 8px 0; color: var(--muted); font-size: 13px; }
+.drop .row { justify-content: center; }
+.dishes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.dish { border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; text-align: center; background: var(--surface); font-size: 12.5px; color: var(--ink-2); }
+.dish .emoji { font-size: 22px; display: block; line-height: 1.3; }
+.privacy { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.privacy svg { flex: none; margin-top: 2px; color: var(--ok); }
+
+/* Photo */
+.photo { position: relative; border-radius: 14px; overflow: hidden; background: #efe3d3; aspect-ratio: 4 / 3; }
+.photo svg.food { width: 100%; height: 100%; display: block; }
+.crop { position: absolute; inset: 12% 14% 10% 16%; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(43, 33, 24, .45); border-radius: 4px; }
+.crop i { position: absolute; width: 18px; height: 18px; border: 4px solid #fff; }
+.crop i:nth-child(1) { left: -4px; top: -4px; border-right: 0; border-bottom: 0; }
+.crop i:nth-child(2) { right: -4px; top: -4px; border-left: 0; border-bottom: 0; }
+.crop i:nth-child(3) { left: -4px; bottom: -4px; border-right: 0; border-top: 0; }
+.crop i:nth-child(4) { right: -4px; bottom: -4px; border-left: 0; border-top: 0; }
+.crop::after { content: ""; position: absolute; inset: 0; background:
+  linear-gradient(to right, transparent 33.2%, rgba(255,255,255,.5) 33.3%, transparent 33.6%, transparent 66.5%, rgba(255,255,255,.5) 66.6%, transparent 66.9%),
+  linear-gradient(to bottom, transparent 33.2%, rgba(255,255,255,.5) 33.3%, transparent 33.6%, transparent 66.5%, rgba(255,255,255,.5) 66.6%, transparent 66.9%); }
+.photo .scan { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(255, 237, 213, .55) 50%, transparent 100%); background-size: 100% 40%; background-repeat: no-repeat; animation: scan 1.6s ease-in-out infinite; }
+@keyframes scan { from { background-position: 0 -40%; } to { background-position: 0 140%; } }
+@media (prefers-reduced-motion: reduce) { .photo .scan { animation: none; background-position: 0 50%; } }
+.toolbar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.toolbar .btn { min-height: 40px; padding: 0 14px; font-weight: 500; }
+
+/* Results */
+.matches { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.match { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.match.top { border-color: #efb48f; background: #fff8f2; }
+.match .head { display: flex; align-items: baseline; gap: 8px; }
+.match .name { font-weight: 600; }
+.match .pct { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); margin-top: 8px; overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: 99px; background: #d9c4ab; }
+.match.top .bar span { background: var(--accent); }
+.ask { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.ask h3 { color: var(--ink); font-size: 16px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; min-height: 40px; }
+.chip.muted { color: var(--muted); }
+
+/* Notices */
+.notice { display: flex; gap: 12px; border-radius: 14px; padding: 14px 16px; }
+.notice svg { flex: none; margin-top: 2px; }
+.notice.warn { background: var(--warn-soft); color: var(--warn); }
+.notice.err { background: var(--err-soft); color: var(--err); }
+.notice.info { background: var(--surface-2); color: var(--ink-2); }
+.notice b { display: block; color: inherit; }
+.notice p { color: var(--ink-2); }
+
+/* Ingredients */
+.ing { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ing li { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.ing li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.sources { margin-top: 16px; font-size: 13px; }
+.sources ol { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+.tag { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 99px; background: var(--ok-soft); color: var(--ok); }
+.confirmed { display: flex; align-items: center; gap: 10px; }
+
+/* Empty / skeleton */
+.empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+.empty .icon { width: 52px; height: 52px; margin: 0 auto 10px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.skel { height: 54px; border-radius: 12px; background: linear-gradient(90deg, var(--surface-2), #fbf4ea, var(--surface-2)); background-size: 200% 100%; animation: sh 1.2s linear infinite; }
+@keyframes sh { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .9s linear infinite; display: inline-block; vertical-align: -3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer { padding: 28px 0 36px; color: var(--muted); font-size: 12.5px; text-align: center; }
+
+[hidden] { display: none !important; }
+
+@media (max-width: 860px) {
+  main .wrap { grid-template-columns: minmax(0, 1fr); }
+  .tagline { display: none; }
+}
+@media (max-width: 480px) {
+  .wrap { padding: 0 16px; }
+  .pane { padding: 16px; }
+  .dishes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ing { grid-template-columns: minmax(0, 1fr); }
+  .steps li + li::before { width: 10px; }
+  .steps .label { display: none; }
+  .steps .now .label { display: inline; }
+  .row .btn { flex: 1 1 auto; }
+  .drop { padding: 26px 14px; }
+  body[data-state="crop"] #result-card { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#b93d0b"/><circle cx="16" cy="16" r="7.5" fill="#fff8f0"/><circle cx="16" cy="16" r="3" fill="#b93d0b"/></svg>
+      <b data-t="app.name"></b>
+    </a>
+    <span class="tagline" data-t="app.tagline"></span>
+    <div class="lang" role="group" data-t-aria="lang.label">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="ko" aria-pressed="false">한국어</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap" style="display:block">
+    <ol class="steps" id="steps" aria-label="Progress">
+      <li data-step="upload"><span class="n">1</span><span class="label" data-t="steps.upload"></span></li>
+      <li data-step="crop"><span class="n">2</span><span class="label" data-t="steps.crop"></span></li>
+      <li data-step="result"><span class="n">3</span><span class="label" data-t="steps.result"></span></li>
+      <li data-step="ingredients"><span class="n">4</span><span class="label" data-t="steps.ingredients"></span></li>
+    </ol>
+  </div>
+  <div class="wrap">
+    <!-- Left: photo -->
+    <section class="card pane" aria-labelledby="left-title">
+      <div data-show="empty error-file">
+        <h2 id="left-title" data-t="upload.title"></h2>
+        <div class="drop" style="margin-top:14px">
+          <div class="icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16"/><path d="M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14"/><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="15.5" cy="8.5" r="1.5"/></svg></div>
+          <b data-t="upload.drop"></b>
+          <span class="or" data-t="upload.or"></span>
+          <div class="row" style="margin-top:0">
+            <button class="btn primary" type="button" data-t="upload.choose"></button>
+            <button class="btn" type="button" data-t="upload.camera"></button>
+          </div>
+          <p class="small" style="margin-top:12px" data-t="upload.hint"></p>
+        </div>
+        <h3 style="margin-top:18px" data-t="supported.title"></h3>
+        <div class="dishes" id="dishes"></div>
+      </div>
+
+      <div data-show="crop loading result uncertain confirmed error-server">
+        <h2 data-show="crop" data-t="crop.title"></h2>
+        <p data-show="crop" data-t="crop.body" style="margin-bottom:14px"></p>
+        <div class="photo">
+          <svg class="food" viewBox="0 0 400 300" role="img" aria-label="Example photo (illustration)">
+            <rect width="400" height="300" fill="#e9d9c4"/>
+            <rect y="210" width="400" height="90" fill="#d8c1a3"/>
+            <ellipse cx="205" cy="160" rx="150" ry="112" fill="#fdfaf5"/>
+            <ellipse cx="205" cy="160" rx="128" ry="94" fill="#f3ebe0"/>
+            <circle cx="205" cy="155" r="88" fill="#d99a4e"/>
+            <circle cx="205" cy="155" r="76" fill="#c2412b"/>
+            <circle cx="205" cy="155" r="72" fill="#f4d58d" opacity=".85"/>
+            <g fill="#b3261e"><circle cx="175" cy="128" r="12"/><circle cx="232" cy="122" r="11"/><circle cx="198" cy="178" r="12"/><circle cx="244" cy="168" r="10"/><circle cx="160" cy="170" r="9"/></g>
+            <g fill="#3f7d3a"><ellipse cx="210" cy="140" rx="9" ry="5" transform="rotate(30 210 140)"/><ellipse cx="185" cy="155" rx="8" ry="4" transform="rotate(-20 185 155)"/><ellipse cx="232" cy="146" rx="8" ry="4" transform="rotate(60 232 146)"/></g>
+            <path d="M205 155 L205 67 M205 155 L281 111 M205 155 L281 199 M205 155 L205 243 M205 155 L129 199 M205 155 L129 111" stroke="#d99a4e" stroke-width="2" opacity=".5"/>
+          </svg>
+          <div class="crop" data-show="crop" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="scan" data-show="loading" aria-hidden="true"></div>
+        </div>
+        <div class="toolbar" data-show="crop">
+          <button class="btn" type="button" data-t="crop.reset"></button>
+          <button class="btn" type="button" data-t="crop.rotate"></button>
+          <button class="btn ghost" type="button" data-t="crop.change"></button>
+        </div>
+        <div class="row" data-show="crop">
+          <button class="btn primary" type="button" style="min-width:160px" data-t="crop.analyze"></button>
+        </div>
+        <div class="toolbar" data-show="result uncertain confirmed error-server">
+          <button class="btn ghost" type="button" data-t="crop.change"></button>
+        </div>
+      </div>
+      <div class="privacy">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span data-t="privacy"></span>
+      </div>
+    </section>
+
+    <!-- Right: result -->
+    <section class="card pane" id="result-card" aria-live="polite" aria-labelledby="right-title">
+      <div data-show="empty" class="empty">
+        <div class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>
+        <b id="right-title" data-t="empty.title" style="color:var(--ink-2)"></b>
+        <p class="small" data-t="empty.body"></p>
+      </div>
+
+      <div data-show="crop" class="empty">
+        <div class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg></div>
+        <b data-t="pending.title" style="color:var(--ink-2)"></b>
+        <p class="small" data-t="pending.body"></p>
+      </div>
+
+      <div data-show="loading">
+        <h2><span class="spinner" aria-hidden="true"></span> <span data-t="loading.title"></span></h2>
+        <p data-t="loading.body"></p>
+        <div style="display:grid;gap:10px;margin-top:14px"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+      </div>
+
+      <div data-show="result">
+        <h2 data-t="result.title"></h2>
+        <ol class="matches" id="matches"></ol>
+        <p class="small" style="margin-top:10px" data-t="result.note"></p>
+        <div class="ask">
+          <h3 id="ask"></h3>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" type="button" data-t="result.confirm"></button>
+          </div>
+          <p class="small" style="margin-top:14px" data-t="result.other"></p>
+          <div class="chips" id="alts"></div>
+        </div>
+      </div>
+
+      <div data-show="uncertain">
+        <div class="notice warn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+          <div><b data-t="uncertain.title"></b><p data-t="uncertain.body"></p></div>
+        </div>
+        <h3 style="margin-top:18px" data-t="uncertain.best"></h3>
+        <ol class="matches" id="weak"></ol>
+        <div class="ask">
+          <h3 data-t="uncertain.pick"></h3>
+          <div class="chips" id="pick"></div>
+          <div class="row"><button class="btn" type="button" data-t="uncertain.retry"></button></div>
+        </div>
+      </div>
+
+      <div data-show="confirmed">
+        <div class="confirmed"><span class="tag">✓</span><h2 id="ing-title"></h2></div>
+        <div class="notice info" style="margin-top:14px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>
+          <p style="margin:0" data-t="ingredients.disclaimer"></p>
+        </div>
+        <ul class="ing" id="ing"></ul>
+        <div class="sources">
+          <h3 data-t="ingredients.sources"></h3>
+          <ol><li><span data-t="ingredients.placeholder"></span></li></ol>
+        </div>
+        <div class="row">
+          <button class="btn" type="button" data-t="ingredients.back"></button>
+          <button class="btn primary" type="button" data-t="ingredients.new"></button>
+        </div>
+      </div>
+
+      <div data-show="error-file">
+        <div class="notice err">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12l4 4M14 12l-4 4"/></svg>
+          <div><b data-t="error.file.title"></b><p data-t="error.file.body"></p></div>
+        </div>
+        <div class="row"><button class="btn primary" type="button" data-t="error.choose"></button></div>
+      </div>
+
+      <div data-show="error-server">
+        <div class="notice err">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.5" r=".6" fill="currentColor"/></svg>
+          <div><b data-t="error.server.title"></b><p data-t="error.server.body"></p></div>
+        </div>
+        <div class="row"><button class="btn primary" type="button" data-t="error.retry"></button><button class="btn" type="button" data-t="error.choose"></button></div>
+      </div>
+    </section>
+  </div>
+</main>
+<footer><div class="wrap" data-t="footer"></div></footer>
+
+<script src="i18n/en.js"></script>
+<script src="i18n/ko.js"></script>
+<script>
+"use strict";
+const DISHES = [
+  { id: "pizza", emoji: "🍕" }, { id: "hamburger", emoji: "🍔" }, { id: "hot_dog", emoji: "🌭" },
+  { id: "kebab", emoji: "🍢" }, { id: "dessert", emoji: "🍰" },
+];
+// Fake model output for the mockup only.
+const RESULT = [["pizza", 0.91], ["dessert", 0.05], ["hamburger", 0.02]];
+const WEAK = [["kebab", 0.34], ["hamburger", 0.29], ["hot_dog", 0.18]];
+const STEP = { empty: "upload", "error-file": "upload", crop: "crop", loading: "crop", result: "result",
+  uncertain: "result", "error-server": "result", confirmed: "ingredients" };
+const ORDER = ["upload", "crop", "result", "ingredients"];
+const STORAGE_KEY = "fl.lang";
+
+function params() { return new URLSearchParams(location.hash.slice(1)); }
+function savedLang() { try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; } }
+function saveLang(v) { try { localStorage.setItem(STORAGE_KEY, v); } catch (e) { /* storage blocked: still works */ } }
+
+function render() {
+  const p = params();
+  const state = STEP[p.get("state")] ? p.get("state") : "empty";
+  const langParam = p.get("lang");
+  const lang = (langParam === "en" || langParam === "ko") ? langParam : (savedLang() === "ko" ? "ko" : "en");
+  const T = window.FL_I18N[lang];
+  const t = (k, vars) => (T[k] ?? k).replace(/\{(\w+)\}/g, (_, v) => vars?.[v] ?? "");
+  const dish = (id) => t("dish." + id);
+  document.documentElement.lang = lang;
+  document.body.dataset.state = state;
+  document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll("[data-t-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.tAria)));
+  document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  document.querySelectorAll("[data-show]").forEach((el) => { el.hidden = !el.dataset.show.split(" ").includes(state); });
+
+  const now = ORDER.indexOf(STEP[state]);
+  document.querySelectorAll("#steps li").forEach((li, i) => {
+    li.className = i < now ? "done" : i === now ? "now" : "";
+    if (i === now) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+  });
+
+  document.getElementById("dishes").innerHTML = DISHES.map((d) =>
+    `<div class="dish"><span class="emoji" aria-hidden="true">${d.emoji}</span>${dish(d.id)}</div>`).join("");
+  const matches = (list, top) => list.map(([id, c], i) =>
+    `<li class="match${top && i === 0 ? " top" : ""}"><div class="head"><span class="name">${dish(id)}</span>` +
+    `<span class="small">${id === "dessert" ? t("dish.dessert.hint") : id === "kebab" ? t("dish.kebab.hint") : ""}</span>` +
+    `<span class="pct" aria-label="${t("result.confidence")} ${Math.round(c * 100)}%">${Math.round(c * 100)}%</span></div>` +
+    `<div class="bar" aria-hidden="true"><span style="width:${Math.max(2, c * 100)}%"></span></div></li>`).join("");
+  document.getElementById("matches").innerHTML = matches(RESULT, true);
+  document.getElementById("weak").innerHTML = matches(WEAK, false);
+  document.getElementById("ask").textContent = t("result.ask", { dish: dish(RESULT[0][0]) });
+  document.getElementById("alts").innerHTML = RESULT.slice(1).map(([id]) => `<button class="chip" type="button">${dish(id)}</button>`).join("") +
+    `<button class="chip muted" type="button">${t("result.none")}</button>`;
+  document.getElementById("pick").innerHTML = DISHES.map((d) => `<button class="chip" type="button"><span aria-hidden="true">${d.emoji}</span> ${dish(d.id)}</button>`).join("");
+  document.getElementById("ing-title").textContent = t("ingredients.title", { dish: dish("pizza") });
+  document.getElementById("ing").innerHTML = T["ing.pizza"].map((x) => `<li>${x}</li>`).join("");
+}
+
+document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+  saveLang(b.dataset.lang);
+  const p = params();
+  p.delete("lang");
+  location.hash = p.toString();
+  render();
+}));
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>

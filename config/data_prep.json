@@ -1,0 +1,12 @@
+{
+  "seed": 42,
+  "ratios": {"train": 0.7, "val": 0.15, "test": 0.15},
+  "near_duplicate": {"remove_max_distance": 2, "group_max_distance": 8},
+  "excluded_drive_folders": {
+    "kebab": "Bing scrape (2026 data_scraping.ipynb): per-image license not verified; replaced by Wikimedia Commons",
+    "plov": "out of scope (plov/pilaf removed from the 5-class scope)",
+    "pilaf": "out of scope (plov/pilaf removed from the 5-class scope)"
+  },
+  "manual_exclusions": [],
+  "cross_class_reviewed": []
+}

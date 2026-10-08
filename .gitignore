@@ -1,0 +1,32 @@
+# Images and datasets never go to Git (licenses: see README).
+data/
+audit/
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.gif
+*.bmp
+*.heic
+
+# Model weights and run outputs
+*.pth
+*.pt
+*.onnx
+runs/
+checkpoints/
+
+# Design screenshots (local verification only)
+design/**/screenshots/
+
+# Python / tools
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Local tool config
+.claude/
