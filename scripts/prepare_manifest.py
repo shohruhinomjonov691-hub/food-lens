@@ -20,9 +20,8 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from food_lens.classes import CLASSES, SOURCE_TO_CLASS  # noqa: E402
-from food_lens.commons import DERIVED_HINT, canonical_author  # noqa: E402
+from food_lens.commons import DERIVED_HINT, DERIVED_TEXT, canonical_author  # noqa: E402
 from food_lens.dedup import UnionFind, near_pairs, summarize_groups  # noqa: E402
-from food_lens.imaging import hamming  # noqa: E402
 from food_lens.manifest import EXCLUSION_COLUMNS, MANIFEST_COLUMNS, read_csv, validate, write_csv  # noqa: E402
 from food_lens.split import SPLITS, assign_splits, quota_report  # noqa: E402
 
@@ -83,80 +82,31 @@ def build(drive_rows, official_rows, commons_rows, config):
         })
 
     nd = config["near_duplicate"]
-    kept, manual_rows = [], []
-    for row in included:
-        if row["location"] in manual:
-            exclude(row, manual[row["location"]])
-            manual_rows.append(row)
-        else:
-            kept.append(row)
-    # A manual exclusion also removes every copy of that image (same bytes, or pHash d<=remove_max in
-    # the same class), so listing only one copy can never leave another copy in the dataset.
-    included = []
-    for row in kept:
-        source = next((m for m in manual_rows if m["checksum"] == row["checksum"] or (
-            m["target"] == row["target"]
-            and hamming(int(m["phash"], 16), int(row["phash"], 16)) <= nd["remove_max_distance"])), None)
-        if source:
-            exclude(row, f"copy of manually excluded {source['location']}")
-        else:
-            included.append(row)
+    rmax, gmax = nd["remove_max_distance"], nd["group_max_distance"]
+    if rmax > gmax:
+        raise ValueError("remove_max_distance must not exceed group_max_distance")
 
-    # Exact duplicates: identical checksum, keep the smallest location.
-    by_checksum = defaultdict(list)
-    for row in included:
-        by_checksum[row["checksum"]].append(row)
-    exact = {"pairs": 0, "groups": 0, "redundant_files": 0}
-    kept = []
-    for rows in by_checksum.values():
-        rows.sort(key=lambda r: r["location"])
-        kept.append(rows[0])
-        if len(rows) > 1:
-            exact["groups"] += 1
-            exact["pairs"] += len(rows) * (len(rows) - 1) // 2
-            exact["redundant_files"] += len(rows) - 1
-            for dup in rows[1:]:
-                exclude(dup, f"exact duplicate of {rows[0]['location']}")
-    included = kept
-
-    # Derived Commons files (crops, retouches) are invisible to pHash; they must be listed.
-    by_id = {row["sample_id"]: row for row in included}
-    derived = config.get("derived_copies", [])
-    known = {d["copy"] for d in derived} | {d["original"] for d in derived} | {
-        d["sample_id"] for d in config.get("derived_reviewed", [])}
-    unlisted = [row["sample_id"] for row in included if row["source"] == "commons"
-                and (DERIVED_HINT.search(row["title"]) or re.search(r"deriv", row["credit"], re.IGNORECASE))
-                and row["sample_id"] not in known]
-    if unlisted:
-        raise NeedsReview("Commons files that look derived (crop/retouch) need an entry in config/data_prep.json "
-                          "(derived_copies or derived_reviewed): " + ", ".join(sorted(unlisted)))
-
-    # Near duplicates by perceptual hash.
+    # One graph over the FULL candidate set, built before manual exclusion and dedup. Two thresholds:
+    # duplicate components (same bytes, or pHash d<=rmax in one class) decide what is removed;
+    # split groups (pHash d<=gmax in any class, derived pairs, author series) decide what stays
+    # together. Keepers inherit the original graph, so a removed "bridge" never splits a group.
     by_loc = {row["location"]: row for row in included}
-    pairs = near_pairs({loc: int(row["phash"], 16) for loc, row in by_loc.items()}, nd["group_max_distance"])
-    same = [(a, b, d) for a, b, d in pairs if by_loc[a]["target"] == by_loc[b]["target"]]
-    cross = [(a, b, d) for a, b, d in pairs if by_loc[a]["target"] != by_loc[b]["target"]]
-    removable = [p for p in same if p[2] <= nd["remove_max_distance"]]
-    near_stats = {
-        "remove_max_distance": nd["remove_max_distance"],
-        "group_max_distance": nd["group_max_distance"],
-        "same_class_removable": summarize_groups(removable, list(by_loc)),
-        "same_class_grouped_only": len([p for p in same if p[2] > nd["remove_max_distance"]]),
-        "cross_class_pairs": len(cross),
-    }
-
-    decisions = {frozenset((c["a"], c["b"])): c for c in config.get("cross_class_reviewed", [])}
-    unreviewed = [p for p in cross if frozenset(p[:2]) not in decisions]
-    if unreviewed:
-        raise NeedsReview("cross-class near-duplicates need a decision in config/data_prep.json "
-                          "(cross_class_reviewed): " + "; ".join(f"{a} <-> {b} (d={d})" for a, b, d in unreviewed))
-
-    # Groups are computed on the graph BEFORE anything is removed, so a removed image that linked two
-    # kept images (A ~ B ~ C, B removed) still keeps A and C together.
+    by_id = {row["sample_id"]: row for row in included}
+    pairs = near_pairs({loc: int(row["phash"], 16) for loc, row in by_loc.items()}, gmax)
+    dup = UnionFind(sorted(by_loc))
     groups = UnionFind(sorted(by_loc))
-    for a, b, _ in pairs:
+    by_checksum = defaultdict(list)
+    for loc in sorted(by_loc):
+        by_checksum[by_loc[loc]["checksum"]].append(loc)
+    for locs in by_checksum.values():
+        for loc in locs[1:]:
+            dup.union(locs[0], loc)
+            groups.union(locs[0], loc)
+    for a, b, d in pairs:
         groups.union(a, b)
-    derived_count = 0
+        if d <= rmax and by_loc[a]["target"] == by_loc[b]["target"]:
+            dup.union(a, b)
+    derived = config.get("derived_copies", [])
     for d in derived:
         if d["copy"] in by_id and d["original"] in by_id:
             groups.union(by_id[d["copy"]]["location"], by_id[d["original"]]["location"])
@@ -164,33 +114,105 @@ def build(drive_rows, official_rows, commons_rows, config):
     # test never shares a photographer's series with train. Per variant keeps the quotas reachable.
     if config.get("group_commons_by_author"):
         first_by_author = {}
-        for row in included:
+        for loc in sorted(by_loc):
+            row = by_loc[loc]
             if row["source"] == "commons":
                 key = (row["author_id"], row["variant"])
                 if key in first_by_author:
-                    groups.union(first_by_author[key], row["location"])
+                    groups.union(first_by_author[key], loc)
                 else:
-                    first_by_author[key] = row["location"]
+                    first_by_author[key] = loc
 
+    # A manual rejection spreads over its whole duplicate component (transitively), so listing one
+    # copy can never leave another copy in the dataset.
     removed = {}
-    uf = UnionFind(list(by_loc))
-    for a, b, _ in removable:
-        uf.union(a, b)
-    for root, members in uf.groups().items():
+    manual_root = {}
+    for loc in sorted(manual):
+        if loc in by_loc:
+            manual_root.setdefault(dup.find(loc), loc)
+    for loc in sorted(by_loc):
+        if loc in manual:
+            removed[loc] = manual[loc]
+        elif dup.find(loc) in manual_root:
+            removed[loc] = f"copy of manually excluded {manual_root[dup.find(loc)]}"
+
+    # Exact duplicates (statistics as before: among files not manually excluded).
+    exact = {"pairs": 0, "groups": 0, "redundant_files": 0}
+    for locs in by_checksum.values():
+        locs = [loc for loc in locs if loc not in removed]
+        if len(locs) > 1:
+            exact["groups"] += 1
+            exact["pairs"] += len(locs) * (len(locs) - 1) // 2
+            exact["redundant_files"] += len(locs) - 1
+            for loc in locs[1:]:
+                removed[loc] = f"exact duplicate of {locs[0]}"
+
+    # Near duplicates: one keeper (smallest location) per remaining duplicate component.
+    live = [loc for loc in sorted(by_loc) if loc not in removed]
+    live_set = set(live)
+    live_pairs = [(a, b, d) for a, b, d in pairs if a in live_set and b in live_set]
+    same = [(a, b, d) for a, b, d in live_pairs if by_loc[a]["target"] == by_loc[b]["target"]]
+    cross = [(a, b, d) for a, b, d in live_pairs if by_loc[a]["target"] != by_loc[b]["target"]]
+    removable = [p for p in same if p[2] <= rmax]
+    near_stats = {
+        "remove_max_distance": rmax,
+        "group_max_distance": gmax,
+        "same_class_removable": summarize_groups(removable, live),
+        "same_class_grouped_only": len([p for p in same if p[2] > rmax]),
+        "cross_class_pairs": len(cross),
+    }
+    components = defaultdict(list)
+    for loc in live:
+        components[dup.find(loc)].append(loc)
+    for members in components.values():
         for loc in members[1:]:
-            removed[loc] = f"near duplicate (pHash d<={nd['remove_max_distance']}) of {members[0]}"
+            removed[loc] = f"near duplicate (pHash d<={rmax}) of {members[0]}"
+
+    decisions = {frozenset((c["a"], c["b"])): c for c in config.get("cross_class_reviewed", [])}
+    unreviewed = [p for p in cross if frozenset(p[:2]) not in decisions]
+    if unreviewed:
+        raise NeedsReview("cross-class near-duplicates need a decision in config/data_prep.json "
+                          "(cross_class_reviewed): " + "; ".join(f"{a} <-> {b} (d={d})" for a, b, d in unreviewed))
     for a, b, d in cross:
         if decisions[frozenset((a, b))]["decision"] == "exclude_both":
             note = decisions[frozenset((a, b))]["note"]
             removed.setdefault(a, f"cross-class near duplicate with {b} (d={d}): {note}")
             removed.setdefault(b, f"cross-class near duplicate with {a} (d={d}): {note}")
+
+    # Derived Commons files (crops, retouches) are invisible to pHash. A listed copy is removed when its
+    # original stays in the dataset; if the original is excluded or not a candidate, the copy is never
+    # accepted silently: it needs a manual exclusion or a derived_reviewed entry with evidence.
+    reviewed_derived = {}
+    for entry in config.get("derived_reviewed", []):
+        if not (entry.get("note") or entry.get("evidence")):
+            raise NeedsReview(f"derived_reviewed entry for {entry.get('sample_id')} needs a note/evidence")
+        reviewed_derived[entry["sample_id"]] = entry
+    derived_count, orphaned = 0, []
     for d in derived:
-        if d["copy"] in by_id and d["original"] in by_id:
+        copy_row, orig_row = by_id.get(d["copy"]), by_id.get(d["original"])
+        if copy_row is None or copy_row["location"] in removed:
+            continue
+        if orig_row is not None and orig_row["location"] not in removed:
             derived_count += 1
-            removed.setdefault(by_id[d["copy"]]["location"],
-                               f"derived copy ({d['reason']}) of {by_id[d['original']]['location']}")
-    for loc, reason in removed.items():
-        exclude(by_loc[loc], reason)
+            removed[copy_row["location"]] = f"derived copy ({d['reason']}) of {orig_row['location']}"
+        elif d["copy"] not in reviewed_derived:
+            orphaned.append(f"{d['copy']} (original {d['original']} "
+                            f"{'excluded' if orig_row is not None else 'not a candidate'})")
+    if orphaned:
+        raise NeedsReview("derived copies whose original is excluded or missing need a manual exclusion or a "
+                          "derived_reviewed entry with evidence: " + ", ".join(orphaned))
+    known = {d["copy"] for d in derived} | {d["original"] for d in derived} | set(reviewed_derived)
+    unlisted = [row["sample_id"] for row in included if row["source"] == "commons"
+                and row["location"] not in removed and row["sample_id"] not in known
+                and (DERIVED_HINT.search(row["title"])
+                     or DERIVED_TEXT.search(row["credit"]) or DERIVED_TEXT.search(row["author"]))]
+    if unlisted:
+        raise NeedsReview("Commons files that look derived (crop/retouch in title, credit or author) need an "
+                          "entry in config/data_prep.json (derived_copies or derived_reviewed): "
+                          + ", ".join(sorted(unlisted)))
+
+    for loc in sorted(removed):
+        exclude(by_loc[loc], removed[loc])
     included = [row for row in included if row["location"] not in removed]
 
     roots = sorted({groups.find(row["location"]) for row in included})

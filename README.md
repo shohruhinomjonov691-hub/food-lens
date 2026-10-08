@@ -97,12 +97,18 @@ Colab) and `data/` (provenance hashes, Commons thumbnails).
 
 Rules:
 
-- unreadable files out; a manual exclusion also removes every copy of that image;
-- exact duplicates (same checksum) and near-duplicates (pHash distance ≤ 2, same class) keep one copy;
+- one graph over the full candidate set, built **before** manual exclusion and dedup, with two
+  thresholds: duplicate components (same checksum, or pHash ≤ 2 in one class) decide removal; split
+  groups (pHash ≤ 8 in any class, derived pairs, one group per canonical author ID and variant for
+  Commons) decide what stays together; keepers inherit the original groups, and a group is never split;
+- unreadable files out; a manual exclusion removes its whole duplicate component (transitively);
+- exact and near duplicates keep one copy (smallest location) per duplicate component;
 - derived Commons files (crops, retouches) are listed in `config/data_prep.json`; a copy whose
-  original is also in the dataset is removed, and an unlisted file that looks derived stops the build;
-- groups = connected components of the pHash ≤ 8 graph **computed before any removal**, plus
-  derived pairs, plus one group per (canonical author ID, variant) for Commons; a group is never split;
+  original stays is removed; a copy whose original is excluded or missing needs a manual exclusion or
+  a `derived_reviewed` entry with evidence; an unlisted file with crop/retouch/derived hints in title,
+  credit or author stops the build;
+- author IDs: crop credits, "(talk)" and "at … Wikipedia" are dropped and the full uploader name is
+  kept; anything else (e.g. "Name from City") is merged only through an evidenced `author_aliases` entry;
 - cross-class near-duplicates need an explicit decision in `config/data_prep.json`;
 - split: seed 42, 70/15/15 per variant; a group goes to val/test only if its variant-count vector fits
   the remaining quota of every variant in it; shortfalls are reported, never forced.

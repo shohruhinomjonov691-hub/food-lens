@@ -23,6 +23,13 @@ def run(rows, off, kebab, config):
     return included, exclusions, stats
 
 
+def assert_far_apart(hashes, limit=8):
+    """Fixture guard: no two fixture images may be pHash look-alikes by accident."""
+    from food_lens.imaging import hamming
+    close = [(a, b) for i, a in enumerate(hashes) for b in hashes[i + 1:] if hamming(a, b) <= limit]
+    assert close == [], "fixture hashes collide"
+
+
 def base(n=40):
     rows, off = [], []
     for i in range(n):
@@ -122,7 +129,10 @@ def test_author_series_grouped_by_canonical_id():
     kebab = [commons(7000 + k, far_hash(3000 + k), "skewered") for k in range(30)]
     for k, name in enumerate(["Pvasiliadis", "pvasiliadis ", "Pvasiliadis ; cropped by X ( talk )"]):
         kebab[k]["author"] = name
-    included, _, _ = run(rows, off, kebab, {**CONFIG, "group_commons_by_author": True})
+    # The "cropped by" credit trips the derived guard; this test is about authors, so record a review.
+    config = {**CONFIG, "group_commons_by_author": True,
+              "derived_reviewed": [{"sample_id": "commons:7002", "note": "test: crop credit, original not a candidate"}]}
+    included, _, _ = run(rows, off, kebab, config)
     same = [r for r in included if r["sample_id"] in {f"commons:{7000 + k}" for k in range(3)}]
     assert len({r["group_id"] for r in same}) == 1 and len({r["split"] for r in same}) == 1
 
@@ -179,11 +189,13 @@ def test_groups_are_never_cut_and_shortfall_is_reported():
 
 def test_hamburger_hot_dog_pair_does_not_steal_quota():
     rows, off = [], []
-    for folder in ("hamburger", "hot_dog"):
+    # Fixed, distinct indices (no hash(): it is salted per process and produced pHash look-alikes).
+    for f, folder in enumerate(("hamburger", "hot_dog")):
         for i in range(40):
-            r = drive(folder, f"{folder}{i}.jpg", far_hash(hash((folder, i)) % 100000))
+            r = drive(folder, f"{folder}{i}.jpg", far_hash(20000 + 100 * f + i))
             rows.append(r)
             off.append(official(r))
+    assert_far_apart([int(r["phash"], 16) for r in rows])
     pair = int(rows[0]["phash"], 16)
     twin = drive("hot_dog", "twin.jpg", pair ^ 0b1111111)       # d=7 cross-class look-alike
     rows.append(twin)
@@ -215,3 +227,109 @@ def test_committed_stats_meet_minimums():
     for v in ("skewered", "minced_skewer", "doner_shawarma"):
         assert stats["quota_check"][v]["minimum_met"] is True
     assert stats["derived_copies_removed"] == 2
+
+
+# Follow-up review (develop@6840542), finding 2: manual exclusions on the full graph.
+def add(rows, off, name, phash, folder="pizza"):
+    r = drive(folder, name, phash)
+    rows.append(r)
+    off.append(official(r))
+    return f"{folder}/{name}"
+
+
+def test_manual_exclusion_spreads_over_duplicate_component():
+    rows, off = base()
+    a = add(rows, off, "910001.jpg", 0)       # A, manual
+    b = add(rows, off, "910002.jpg", 3)       # d(A,B) = 2
+    c = add(rows, off, "910003.jpg", 15)      # d(B,C) = 2, d(A,C) = 4
+    config = {**CONFIG, "manual_exclusions": [{"location": a, "reason": "not food"}]}
+    included, exclusions, _ = run(rows, off, [], config)
+    reasons = {e["location"]: e["reason"] for e in exclusions}
+    assert reasons[a] == "not food"
+    assert reasons[b] == reasons[c] == f"copy of manually excluded {a}"
+    assert not {b, c} & {r["location"] for r in included}
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_manual_bridge_keeps_group(seed):
+    rows, off = base()
+    a = add(rows, off, "920001.jpg", 255)     # d(A,B) = 8
+    b = add(rows, off, "920002.jpg", 0)       # B, manual (the bridge)
+    c = add(rows, off, "920003.jpg", 65280)   # d(B,C) = 8, d(A,C) = 16
+    config = {**CONFIG, "seed": seed, "manual_exclusions": [{"location": b, "reason": "not food"}]}
+    included, _, _ = run(rows, off, [], config)
+    by_loc = {r["location"]: r for r in included}
+    assert by_loc[a]["group_id"] == by_loc[c]["group_id"] and by_loc[a]["split"] == by_loc[c]["split"]
+
+
+def test_remove_and_group_thresholds_are_separate():
+    rows, off = base()
+    a = add(rows, off, "930001.jpg", 0)
+    b = add(rows, off, "930002.jpg", 0b111111)   # d = 6: grouped, not removed
+    included, exclusions, _ = run(rows, off, [], CONFIG)
+    by_loc = {r["location"]: r for r in included}
+    assert a in by_loc and b in by_loc and by_loc[a]["group_id"] == by_loc[b]["group_id"]
+    with pytest.raises(ValueError):
+        build(rows, off, [], {**CONFIG, "near_duplicate": {"remove_max_distance": 9, "group_max_distance": 8}})
+
+
+# Finding 3: derived copies are never accepted silently.
+def test_crop_of_manually_excluded_original_needs_review():
+    rows, off, kebab = crop_case()
+    config = {**CONFIG, "derived_copies": [{"copy": "commons:20326189", "original": "commons:2978616",
+                                            "reason": "crop"}],
+              "manual_exclusions": [{"location": kebab[0]["original_url"], "reason": "not kebab"}]}
+    with pytest.raises(NeedsReview, match="commons:20326189 \\(original commons:2978616 excluded\\)"):
+        build(rows, off, kebab, copy.deepcopy(config))
+    # An explicit exclusion of the copy, or an evidenced review, resolves it.
+    config["manual_exclusions"].append({"location": kebab[1]["original_url"], "reason": "crop of excluded"})
+    run(rows, off, kebab, config)
+
+
+def test_crop_with_missing_original_needs_review_unless_reviewed():
+    rows, off, kebab = crop_case()
+    kebab = kebab[1:]                                            # original is not a candidate
+    config = {**CONFIG, "derived_copies": [{"copy": "commons:20326189", "original": "commons:2978616",
+                                            "reason": "crop"}]}
+    with pytest.raises(NeedsReview, match="not a candidate"):
+        build(rows, off, kebab, copy.deepcopy(config))
+    config["derived_reviewed"] = [{"sample_id": "commons:20326189", "note": ""}]
+    with pytest.raises(NeedsReview, match="needs a note/evidence"):
+        build(rows, off, kebab, copy.deepcopy(config))
+    config["derived_reviewed"] = [{"sample_id": "commons:20326189", "note": "original not available; crop kept"}]
+    included, _, _ = run(rows, off, kebab, config)
+    assert "commons:20326189" in {r["sample_id"] for r in included}
+
+
+def test_crop_hint_in_author_needs_review():
+    rows, off = base()
+    k = commons(9100, far_hash(9100))
+    k.update(title="File:Food.jpg", credit="Own work", author="Photographer ; cropped by Editor")
+    with pytest.raises(NeedsReview, match="commons:9100"):
+        build(rows, off, [k], copy.deepcopy(CONFIG))
+    k.update(author="Photographer", credit="This file was derived from: Food original.jpg")
+    with pytest.raises(NeedsReview, match="commons:9100"):
+        build(rows, off, [k], copy.deepcopy(CONFIG))
+
+
+# Finding 4: full names from the Wikipedia wrapper; no merge of different people.
+@pytest.mark.parametrize("a, b, same", [
+    ("The original uploader was John Smith at English Wikipedia", "The original uploader was John Jones at "
+     "English Wikipedia", False),
+    ("The original uploader was John Smith at English Wikipedia.", "John Smith", True),
+    ("The original uploader was J. R. Smith at English Wikipedia", "J. R. Smith", True),
+    ("John from Paris", "John from Rome", False),
+    ("Ninara", "Ninara from Helsinki, Finland", False),      # needs an evidenced alias, not a heuristic
+])
+def test_canonical_author_boundaries(a, b, same):
+    assert (canonical_author(a) == canonical_author(b)) is same
+
+
+# Finding 5: a configured minimum for a variant that has no images is reported.
+def test_quota_report_includes_absent_variant():
+    report = quota_report(["a1", "a2"], {"a1": "a1", "a2": "a2"}, {"a1": "skewered", "a2": "skewered"},
+                          {"a1": "train", "a2": "train"}, {"train": 0.7, "val": 0.15, "test": 0.15},
+                          {"skewered": 1, "doner_shawarma": 9})
+    row = report["doner_shawarma"]
+    assert (row["total"], row["val"], row["test"], row["minimum_met"]) == (0, 0, 0, False)
+    assert "absent" in row["reason"]

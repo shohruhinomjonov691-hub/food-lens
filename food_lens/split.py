@@ -60,7 +60,10 @@ def quota_report(items, groups, strata, splits, ratios, minimums=None):
 
     minimums: dict stratum -> minimum count required in val and in test.
     """
-    sizes = Counter(strata[i] for i in items)
+    minimums = minimums or {}
+    # Strata with a configured minimum are reported even when no image is left in them.
+    sizes = Counter({s: 0 for s in minimums})
+    sizes.update(strata[i] for i in items)
     target = quotas(sizes, ratios)
     actual = {s: Counter() for s in sizes}
     for i in items:
@@ -70,11 +73,13 @@ def quota_report(items, groups, strata, splits, ratios, minimums=None):
     for s in sorted(sizes):
         row = {"total": sizes[s], "target_val": target[s]["val"], "target_test": target[s]["test"],
                "val": actual[s]["val"], "test": actual[s]["test"], "train": actual[s]["train"]}
-        need = (minimums or {}).get(s)
+        need = minimums.get(s)
         if need is not None:
             row["minimum"] = need
             row["minimum_met"] = row["val"] >= need and row["test"] >= need
-            if not row["minimum_met"]:
+            if not row["minimum_met"] and sizes[s] == 0:
+                row["reason"] = "variant absent: no images left after review and dedup"
+            elif not row["minimum_met"]:
                 big = sorted({group_sizes[groups[i]] for i in items if strata[i] == s and group_sizes[groups[i]] > 1},
                              reverse=True)[:5]
                 row["reason"] = (f"only {sizes[s]} images; target val/test {target[s]['val']}/{target[s]['test']}"
