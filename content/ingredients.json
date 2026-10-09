@@ -1,0 +1,307 @@
+{
+  "version": 1,
+  "checked": "2026-10-09",
+  "method": "Each item was read in the cited English Wikipedia article on the checked date; only items the article states are listed. Korean text is a translation of the English list (source language: English).",
+  "disclaimer": {
+    "en": "Typical ingredients; not identified from your photo. Recipes vary — check with the cook if you have allergies.",
+    "ko": "일반적인 재료이며, 사진에서 식별한 것이 아닙니다. 조리법은 다를 수 있으니 알레르기가 있다면 조리한 분께 확인하세요."
+  },
+  "variant_note": {
+    "en": "This dish has several kinds. You choose the kind; Food Lens does not detect it from the photo.",
+    "ko": "이 음식에는 여러 종류가 있습니다. 종류는 직접 선택하며, Food Lens는 사진에서 종류를 판별하지 않습니다."
+  },
+  "dishes": {
+    "pizza": {
+      "name": {
+        "en": "Pizza",
+        "ko": "피자"
+      },
+      "ingredients": {
+        "en": [
+          "Leavened wheat-based dough",
+          "Tomato sauce",
+          "Cheese, typically mozzarella",
+          "Other toppings, which vary",
+          "In some styles: olive oil, garlic, oregano or basil"
+        ],
+        "ko": [
+          "발효한 밀 반죽",
+          "토마토소스",
+          "치즈(주로 모차렐라)",
+          "기타 토핑(종류는 다양함)",
+          "일부 스타일: 올리브유, 마늘, 오레가노 또는 바질"
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Pizza",
+          "title": "Pizza — Wikipedia",
+          "language": "en",
+          "checked": "2026-10-09",
+          "supports": "dough, tomato sauce, mozzarella, toppings; olive oil, garlic, oregano/basil in specific varieties"
+        }
+      ]
+    },
+    "hamburger": {
+      "name": {
+        "en": "Hamburger",
+        "ko": "햄버거"
+      },
+      "ingredients": {
+        "en": [
+          "Patty of ground meat, typically beef",
+          "Sliced bun or bread roll",
+          "Lettuce, tomato, onion or pickles",
+          "Ketchup, mustard, mayonnaise or relish",
+          "Cheese (in a cheeseburger)"
+        ],
+        "ko": [
+          "다진 고기 패티(주로 소고기)",
+          "반으로 자른 번 또는 롤빵",
+          "양상추, 토마토, 양파 또는 피클",
+          "케첩, 머스터드, 마요네즈 또는 렐리시",
+          "치즈(치즈버거의 경우)"
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Hamburger",
+          "title": "Hamburger — Wikipedia",
+          "language": "en",
+          "checked": "2026-10-09",
+          "supports": "ground-meat patty (typically beef), bun, lettuce/tomato/onion/pickles, ketchup/mustard/mayonnaise/relish, cheese"
+        }
+      ]
+    },
+    "hot_dog": {
+      "name": {
+        "en": "Hot dog",
+        "ko": "핫도그"
+      },
+      "ingredients": {
+        "en": [
+          "Sausage of pork, beef, chicken, turkey or a mix",
+          "Partially sliced bun",
+          "Mustard, ketchup, relish or onions",
+          "Toppings such as sauerkraut, chili, grated cheese or coleslaw"
+        ],
+        "ko": [
+          "돼지고기, 소고기, 닭고기, 칠면조 또는 혼합 소시지",
+          "일부만 자른 번",
+          "머스터드, 케첩, 렐리시 또는 양파",
+          "사우어크라우트, 칠리, 간 치즈, 코울슬로 등 토핑"
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Hot_dog",
+          "title": "Hot dog — Wikipedia",
+          "language": "en",
+          "checked": "2026-10-09",
+          "supports": "sausage meats, partially sliced bun, condiments and toppings"
+        }
+      ]
+    },
+    "dessert": {
+      "name": {
+        "en": "Dessert (cake)",
+        "ko": "디저트 (케이크)"
+      },
+      "variants": {
+        "cheesecake": {
+          "name": {
+            "en": "Cheesecake",
+            "ko": "치즈케이크"
+          },
+          "ingredients": {
+            "en": [
+              "Soft fresh cheese such as cream cheese, ricotta or quark",
+              "Eggs or cream",
+              "Sugar",
+              "Base of crushed cookies, graham crackers or pastry",
+              "Often topped with fruit, whipped cream or chocolate syrup"
+            ],
+            "ko": [
+              "크림치즈, 리코타, 크바르크 등 부드러운 생치즈",
+              "달걀 또는 크림",
+              "설탕",
+              "부순 쿠키, 그레이엄 크래커 또는 페이스트리 바닥",
+              "과일, 휘핑크림, 초콜릿 시럽을 올리는 경우가 많음"
+            ]
+          },
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Cheesecake",
+              "title": "Cheesecake — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "soft fresh cheese, eggs or cream, sugar, crust of crushed cookies/graham crackers/pastry, toppings"
+            }
+          ]
+        },
+        "chocolate_cake": {
+          "name": {
+            "en": "Chocolate cake",
+            "ko": "초콜릿 케이크"
+          },
+          "ingredients": {
+            "en": [
+              "Chocolate or cocoa powder",
+              "Flour",
+              "Sugar",
+              "Eggs",
+              "Butter or oil",
+              "Baking powder or baking soda",
+              "Often chocolate icing"
+            ],
+            "ko": [
+              "초콜릿 또는 코코아 가루",
+              "밀가루",
+              "설탕",
+              "달걀",
+              "버터 또는 식용유",
+              "베이킹파우더 또는 베이킹소다",
+              "초콜릿 아이싱을 올리는 경우가 많음"
+            ]
+          },
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Chocolate_cake",
+              "title": "Chocolate cake — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "chocolate or cocoa powder; chocolate icing"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Cake",
+              "title": "Cake — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "flour, sugar, eggs, fat (butter, oil), leavening (baking soda or baking powder)"
+            }
+          ]
+        }
+      }
+    },
+    "kebab": {
+      "name": {
+        "en": "Kebab",
+        "ko": "케밥"
+      },
+      "variants": {
+        "skewered": {
+          "name": {
+            "en": "Shish / shashlik",
+            "ko": "시시 / 샤슬릭"
+          },
+          "ingredients": {
+            "en": [
+              "Cubes of meat, traditionally lamb; also beef, pork, chicken or fish",
+              "Shashlik: marinade of vinegar, dry wine or sour juice with onions, garlic, herbs and spices",
+              "Vegetables on the skewer such as bell peppers, onions, mushrooms or tomatoes",
+              "Often served with onions with sumac, grilled pepper and tomato, or pilaf"
+            ],
+            "ko": [
+              "깍둑 썬 고기(전통적으로 양고기, 소고기·돼지고기·닭고기·생선도 사용)",
+              "샤슬릭: 식초, 드라이 와인 또는 신 과즙에 양파·마늘·허브·향신료를 넣은 양념",
+              "꼬치에 함께 꽂는 파프리카, 양파, 버섯, 토마토 등 채소",
+              "수막을 뿌린 양파, 구운 고추와 토마토, 필라프를 곁들이는 경우가 많음"
+            ]
+          },
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Shish_kebab",
+              "title": "Shish kebab — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "cubes of meat, traditionally lamb; also other meat, poultry or fish; served with onions with sumac, grilled pepper and tomato, pilaf"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Shashlik",
+              "title": "Shashlik — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "lamb, pork, beef, chicken; acidic marinade with onions, garlic, herbs, spices; peppers, onions, mushrooms, tomatoes on the skewer"
+            }
+          ]
+        },
+        "minced_skewer": {
+          "name": {
+            "en": "Adana / koobideh",
+            "ko": "아다나 / 쿠비데"
+          },
+          "ingredients": {
+            "en": [
+              "Minced lamb (beef in some versions)",
+              "Adana: lamb tail fat and sweet red pepper",
+              "Koobideh: grated onion and black pepper",
+              "Salt",
+              "Often served with flatbread (lavash) or steamed rice, grilled tomatoes and onions with sumac"
+            ],
+            "ko": [
+              "다진 양고기(일부는 소고기 사용)",
+              "아다나: 양 꼬리 지방과 단맛 나는 붉은 고추",
+              "쿠비데: 간 양파와 후추",
+              "소금",
+              "라바시 같은 납작빵이나 쪄낸 밥, 구운 토마토, 수막 양파를 곁들이는 경우가 많음"
+            ]
+          },
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Adana_kebab%C4%B1",
+              "title": "Adana kebab%C4%B1 — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "minced lamb, tail fat, sweet red peppers, salt; served with lavaş, roasted tomatoes, onions with sumac"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Kabab_koobideh",
+              "title": "Kabab koobideh — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "ground lamb (beef as non-traditional), grated onion, salt, black pepper; served with flatbread or steamed rice, grilled tomatoes, sumac"
+            }
+          ]
+        },
+        "doner_shawarma": {
+          "name": {
+            "en": "Döner / shawarma",
+            "ko": "되네르 / 샤와르마"
+          },
+          "ingredients": {
+            "en": [
+              "Thin slices of seasoned meat: lamb, beef or chicken",
+              "Seasoning such as onion, salt, thyme and peppers (döner) or cumin, cardamom, cinnamon and paprika (shawarma)",
+              "Pita or a flatbread such as lavash",
+              "Tomato, lettuce, cabbage, onion, cucumber or pickles",
+              "Sauces such as garlic sauce or tahini"
+            ],
+            "ko": [
+              "양념한 고기를 얇게 썬 것: 양고기, 소고기 또는 닭고기",
+              "양념: 양파·소금·타임·후추(되네르) 또는 커민·카다멈·계피·파프리카(샤와르마)",
+              "피타 또는 라바시 같은 납작빵",
+              "토마토, 양상추, 양배추, 양파, 오이 또는 피클",
+              "마늘 소스나 타히니 등 소스"
+            ]
+          },
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Doner_kebab",
+              "title": "Doner kebab — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "lamb, beef or chicken; onion, salt, thyme, peppers; pita or lavash; tomato, lettuce, cabbage, onion, cucumber; sauces"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Shawarma",
+              "title": "Shawarma — Wikipedia",
+              "language": "en",
+              "checked": "2026-10-09",
+              "supports": "lamb, chicken, beef; cumin, cardamom, cinnamon, paprika; pita/lavash; garlic sauce, tahini; vegetables and pickles"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

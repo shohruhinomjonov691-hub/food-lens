@@ -145,6 +145,35 @@ Preprocessing ([`food_lens/preprocess.py`](food_lens/preprocess.py)) has two sep
 history, calibration, val/test metrics, confusion matrix, per-variant results, predictions).
 Checkpoints stay private until the Food-101 public-use question is settled.
 
+## Inference API (batch 4) and ingredients (batch 5) — `app/`
+
+```bash
+.venv/bin/pip install -e '.[api,dev]'
+FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
+```
+
+| Endpoint | Result |
+| --- | --- |
+| `GET /health` | `status`, `model_ready`, `model_reason`, loaded run + checkpoint SHA-256, classes, variants |
+| `POST /api/predict` (raw image bytes) | `predictions`: top-3 `{class, confidence}` (calibrated: locked temperature), `uncertain` (top-1 < locked threshold), `threshold`, `variant: null` |
+| `GET /api/ingredients/{dish}?variant=…&lang=en\|ko` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant` |
+
+- **No trained model yet** → `/api/predict` answers **503 `MODEL_NOT_READY`** with the reason; it never
+  returns placeholder predictions. A run folder is loaded only if it is not a smoke run, has a test
+  evaluation, its `best.pt` matches the SHA-256 in `final.json`, its classes are `config/classes.json`
+  in the same order, and its preprocessing recipe/spec equal `food_lens/preprocess.py`.
+- Prediction uses `food_lens.preprocess.inference_tensor` — the same steps as the test split.
+- Upload validation (in memory, like Face Blur): raw body (no multipart spooling), ≤ 10 MB, real
+  format by magic bytes (JPEG, PNG, WebP), ≤ 8000 px side and ≤ 25 MP checked from the header before
+  decoding, full decode (truncated/corrupt → 422), animated images rejected. Images are never written
+  to disk or logs; errors return stable `code`s for the UI.
+- The model predicts the class only. For **kebab** (skewered / minced on skewers / döner-shawarma) and
+  **dessert** (cheesecake / chocolate cake) the user picks the kind, and the ingredient list is per kind.
+- `content/ingredients.json`: EN + KO lists, each with the English Wikipedia articles read on
+  2026-10-09 and what each source supports; Korean is a translation (source language: English).
+  Disclaimer: "Typical ingredients; not identified from your photo."
+- Not measured yet: latency/RAM on the 2-CPU server (needs the trained checkpoint).
+
 ## Evaluation plan (batch 3, not started)
 
 - Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,

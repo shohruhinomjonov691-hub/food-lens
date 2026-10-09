@@ -6,7 +6,8 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "pillow"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "httpx"]
+api = ["fastapi==0.142.4", "uvicorn==0.54.0", "torch", "torchvision"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
