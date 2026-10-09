@@ -18,6 +18,8 @@ work="$(mktemp -d)"
 cleanup() { "${compose[@]}" down --remove-orphans >/dev/null 2>&1 || true; rm -rf "$work"; }
 trap cleanup EXIT
 fail() { echo "FAIL: $*"; exit 1; }
+# shellcheck source=lib.sh
+. ./lib.sh
 
 "${compose[@]}" up -d --build --wait >/dev/null
 base=http://127.0.0.1:18085
@@ -66,7 +68,6 @@ status=$(curl -sS -o "$work/ingr.json" -w '%{http_code}' "$base/api/ingredients/
 py "import json, sys; b = json.loads(sys.argv[1]); assert b['ingredients'] and b['disclaimer']; print('ingredients ko:', b['name'])" \
   "$(cat "$work/ingr.json")" || fail "ingredients body"
 
-warnings() { "${compose[@]}" logs nginx 2>&1 | grep -c "buffered to a temporary file" || true; }
 head -c $((10 * 1024 * 1024 + 512 * 1024)) /dev/zero > "$work/big.bin"     # 10.5 MB: over the API limit
 status=$(curl -sS -o "$work/big.json" -w '%{http_code}' -H "Content-Type: image/jpeg" --data-binary @"$work/big.bin" "$base/api/predict")
 echo "10.5 MB upload: $status $(cat "$work/big.json")"
@@ -75,16 +76,18 @@ head -c $((12 * 1024 * 1024)) /dev/zero > "$work/huge.bin"                # 12 M
 status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Content-Type: image/jpeg" --data-binary @"$work/huge.bin" "$base/api/predict")
 echo "12 MB upload: $status"
 [ "$status" = 413 ] || fail "Nginx size limit"
-temp=$(warnings)
+temp=$(nginx_temp_warnings) || fail "could not read Nginx logs"
 echo "nginx temp-file warnings: $temp"
 [ "$temp" -eq 0 ] || fail "Nginx buffered traffic to disk"
 
 # (4) No loopback or internal API URL in anything the browser downloads (static assets, public files, served HTML).
-# URL forms only: Next's client runtime contains a WHATWG URL parser with the bare word "localhost" in it.
-url_re='//(localhost|\[::1\]|api)([:/"'"'"'`]|$)|127\.0\.0\.1|api:8000'
-leaks=$("${compose[@]}" exec -T web grep -rlE "$url_re" /srv/food-lens-web/.next/static /srv/food-lens-web/public || true)
-grep -qE "$url_re" "$work/index.html" && leaks="$leaks index.html"
-[ -z "$leaks" ] || fail "internal URL in browser assets: $leaks"
+# A failed docker exec, a missing asset directory or a grep error fails the smoke test (lib.sh).
+rc=0; leaks=$(asset_leaks) || rc=$?
+[ "$rc" -eq 2 ] && fail "browser asset scan could not run"
+[ "$rc" -eq 0 ] || fail "internal URL in browser assets: $leaks"
+rc=0; file_leaks "$work/index.html" >/dev/null || rc=$?
+[ "$rc" -eq 2 ] && fail "scan of the served HTML could not run"
+[ "$rc" -eq 0 ] || fail "internal URL in the served HTML"
 echo "browser bundle: no loopback or internal API URL"
 
 # (5) Hardening.

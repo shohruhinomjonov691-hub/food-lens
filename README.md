@@ -49,15 +49,18 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
   `license_agreement.txt`: the images come from Foodspotting, are not the property of ETH Zurich, and
   "any use beyond scientific fair use must be negociated with the respective picture owners according
   to the Foodspotting terms of use". The ETH dataset page and the Hugging Face card (`ethz/food101`,
-  license "unknown") add no other terms. Foodspotting's terms (archived copy, effective 2012-10-17) say
-  users keep the copyright of their photos and allow use of content only for personal, non-commercial
-  purposes or with written permission. Foodspotting no longer exists (`foodspotting.com` does not resolve), so
-  permission cannot be obtained from it. Provenance: the Drive copy is compared byte-for-byte with the
+  license "unknown") add no other terms. Foodspotting's terms of service — archived copy
+  <https://web.archive.org/web/20141230063229/http://www.foodspotting.com/terms> (captured 2014-12-30,
+  "Effective on October 17, 2012") — say users keep the copyright of their photos, the service and its
+  content are for personal, non-commercial use, and content may not be used without written permission
+  from Foodspotting or the original license holder. The Foodspotting website is no longer reachable
+  (on 2026-10-10 `foodspotting.com` and `www.foodspotting.com` had no address records); no permission
+  was requested. Provenance: the Drive copy is compared byte-for-byte with the
   official archive (`scripts/food101_provenance.py`). Assessment of the three uses (not legal advice):
 
   | Use | Status | Basis |
   | --- | --- | --- |
-  | Redistributing Food-101 images | **Not allowed** — not done | Third-party copyright; beyond scientific fair use; the terms forbid copying and distribution |
+  | Redistributing Food-101 images | **Redistribution permission not established** — not redistributed | Third-party copyright; no text grants it; the archived terms require written permission for copying or distributing content |
   | Publishing the trained weights | **Not covered** — not done | The texts do not address models; nothing grants it, so it is not assumed |
   | Public inference service (food.gotrips.cloud) | **Open** — not deployed | The model is derived from the images; a public demo is not clearly "scientific fair use" and no text permits it |
 
