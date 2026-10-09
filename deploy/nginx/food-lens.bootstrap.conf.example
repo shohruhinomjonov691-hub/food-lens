@@ -1,0 +1,22 @@
+# Step 1 of 2 — HTTP bootstrap for food.gotrips.cloud, before its certificate exists.
+# Serves only the ACME HTTP-01 challenge so certbot (webroot mode) can issue the certificate.
+# Compatible with Nginx 1.24.0. Install as its own file in /etc/nginx/conf.d/; do not edit other sites.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name food.gotrips.cloud;
+
+    access_log /var/log/nginx/food-lens.access.log;
+    error_log  /var/log/nginx/food-lens.error.log warn;
+
+    # Own webroot, separate from any other site's.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/food-lens-acme;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 404;
+    }
+}

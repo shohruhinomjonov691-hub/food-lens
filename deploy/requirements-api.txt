@@ -1,0 +1,9 @@
+# Inference API image (Dockerfile). CPU-only PyTorch wheels (no CUDA), for linux/amd64 (server) and linux/arm64.
+# Same torch/torchvision versions as the local real-model check (torch 2.14.1, torchvision 0.29.1).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu
+fastapi==0.142.4
+uvicorn==0.54.0
+numpy==2.5.3
+pillow==12.3.0

@@ -45,16 +45,30 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
 
 ### Licenses
 
-- **Food-101** (Bossard, Guillaumin, Van Gool, ECCV 2014, ETH Zurich). The images come from
-  Foodspotting and are not owned by ETH; its license agreement allows "scientific fair use" and asks
-  for anything beyond that to be negotiated with the picture owners. It is used here for
-  non-commercial research and education only, and images are never redistributed. **Whether a model
-  trained on it may back a public deployment (food.gotrips.cloud) is not yet clarified** — open item
-  before deploy. Provenance: the Drive copy is compared
-  byte-for-byte with the official archive (`scripts/food101_provenance.py`).
+- **Food-101** (Bossard, Guillaumin, Van Gool, ECCV 2014, ETH Zurich). The archive's
+  `license_agreement.txt`: the images come from Foodspotting, are not the property of ETH Zurich, and
+  "any use beyond scientific fair use must be negociated with the respective picture owners according
+  to the Foodspotting terms of use". The ETH dataset page and the Hugging Face card (`ethz/food101`,
+  license "unknown") add no other terms. Foodspotting's terms (archived copy, effective 2012-10-17) say
+  users keep the copyright of their photos and allow use of content only for personal, non-commercial
+  purposes or with written permission. Foodspotting no longer exists (`foodspotting.com` does not resolve), so
+  permission cannot be obtained from it. Provenance: the Drive copy is compared byte-for-byte with the
+  official archive (`scripts/food101_provenance.py`). Assessment of the three uses (not legal advice):
+
+  | Use | Status | Basis |
+  | --- | --- | --- |
+  | Redistributing Food-101 images | **Not allowed** — not done | Third-party copyright; beyond scientific fair use; the terms forbid copying and distribution |
+  | Publishing the trained weights | **Not covered** — not done | The texts do not address models; nothing grants it, so it is not assumed |
+  | Public inference service (food.gotrips.cloud) | **Open** — not deployed | The model is derived from the images; a public demo is not clearly "scientific fair use" and no text permits it |
+
+  Paths, from least extra work: (a) no public launch; the deploy files stay ready and the demo runs
+  locally or for reviewers; (b) an access-restricted, non-commercial demo (Nginx basic auth, no weights
+  or images distributed), which narrows exposure but is still not an explicit permission; (c) retrain
+  the four Food-101 classes on images with verified open licenses (as was done for kebab), after which
+  a public service has a documented basis. The decision belongs to the project owner.
 - **Wikimedia Commons** kebab photos: each file keeps its own license (CC0 / public domain / CC BY /
   CC BY-SA) and author, recorded per file in `manifests/kebab_commons.csv`. Attribution is required
-  wherever these images are shown.
+  wherever these images are shown (the app shows none).
 - The earlier Bing-scraped kebab images are **not used**: their licenses could not be verified.
 
 ### Dataset v1 (manifest_v1, seed 42)
@@ -204,7 +218,31 @@ and "Typical ingredients; not identified from your photo".
 - No mock or demo data in `src/` or `app/` (tested). `web/tests/e2e/mock-api.mjs` is a **test-only**
   mock used for browser checks of UI states; its numbers are fixtures, not model results.
 
-## Evaluation plan (batch 3, not started)
+## Deployment (prepared, not deployed) — `compose.yaml`, `Dockerfile`, `web/Dockerfile`, `deploy/`
+
+Two containers in the Compose project `food-lens`. The API is FastAPI with CPU-only PyTorch; the web
+container is Next.js standalone. Both images are built on pinned base images, run as non-root uid 10001
+with a read-only root filesystem and `cap_drop: ALL`, `no-new-privileges`, memory/CPU/pids limits, a
+healthcheck and json-file log rotation. They listen only on `127.0.0.1:18776` (api) and
+`127.0.0.1:18775` (web).
+
+- The trained run folder is **mounted read-only from outside the repository** (`FOOD_LENS_RUN_DIR_HOST`,
+  required). Images never contain the model. The API healthcheck passes only when the verified model
+  is loaded.
+- One domain: Nginx routes `/api/` to the API and everything else to the web app. The browser only uses
+  relative `/api/...` URLs. The web image's own `/api` rewrite points at `http://api:8000`, set at build
+  time. The smoke test checks that no loopback or internal URL is in the browser assets.
+- `deploy/nginx/`: site templates for Nginx 1.24 (`conf.d/food-lens.conf`, no `http2`, certbot
+  webroot), proxy snippet (no temp files for uploads), `check-config.sh`, and a step-by-step README.
+- `deploy/smoke/check.sh`: both containers plus Nginx 1.24 locally, with a real run folder and photo.
+
+```bash
+FOOD_LENS_RUN_DIR_HOST=/abs/path/to/run docker compose up -d --build --wait
+deploy/nginx/check-config.sh
+FOOD_LENS_RUN_DIR_HOST=/abs/path/to/run SMOKE_IMAGE=/abs/photo.jpg SMOKE_EXPECT=pizza deploy/smoke/check.sh
+```
+
+## Evaluation plan (batch 3)
 
 - Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,
   per-variant kebab recall, confusion matrix, with bootstrap confidence intervals (kebab test is small).
@@ -237,4 +275,7 @@ manifests/    generated manifests (no images)
 notebooks/    00_dataset_audit.ipynb (read-only Drive audit, Colab)
 design/       food-lens mockup (EN/KO, warm light theme)
 tests/        pytest
+app/          FastAPI inference API; content/ ingredients
+web/          Next.js frontend (own Dockerfile)
+deploy/       API requirements, Nginx templates, local smoke test
 ```

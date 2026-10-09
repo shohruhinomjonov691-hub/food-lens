@@ -1,0 +1,11 @@
+# Build context for web/Dockerfile: sources and the lockfile only.
+node_modules
+.next
+*.tsbuildinfo
+next-env.d.ts
+tests
+Dockerfile
+.dockerignore
+.DS_Store
+.env
+.env.*

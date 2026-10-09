@@ -1,0 +1,50 @@
+# Step 2 of 2 — final site for food.gotrips.cloud, after the certificate was issued (see deploy/nginx/README.md).
+# Compatible with Nginx 1.24.0. No "http2" on the 443 listen lines: on 1.24 it is a listen parameter shared by every
+# site on that address:port, and the existing sites on this server serve HTTP/1.1.
+# The containers run from compose.yaml on 127.0.0.1:18775 (web) and 127.0.0.1:18776 (api).
+
+upstream food_lens_web {
+    server 127.0.0.1:18775;   # keep in sync with FOOD_LENS_WEB_PORT in compose.yaml
+    keepalive 8;
+}
+
+upstream food_lens_api {
+    server 127.0.0.1:18776;   # keep in sync with FOOD_LENS_API_PORT in compose.yaml
+    keepalive 8;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name food.gotrips.cloud;
+
+    # Keep serving ACME challenges for renewals.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/food-lens-acme;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name food.gotrips.cloud;
+
+    ssl_certificate     /etc/letsencrypt/live/food.gotrips.cloud/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/food.gotrips.cloud/privkey.pem;
+
+    # Request lines only; no request bodies, so no image data is logged.
+    access_log /var/log/nginx/food-lens.access.log;
+    error_log  /var/log/nginx/food-lens.error.log warn;
+
+    # Optional access restriction (see "Data -> Licenses" in README.md): uncomment to require a login.
+    # The password file is created on the server and never committed.
+    # auth_basic "Food Lens";
+    # auth_basic_user_file /etc/nginx/food-lens.htpasswd;
+
+    include /etc/nginx/snippets/food-lens-proxy.conf;
+}

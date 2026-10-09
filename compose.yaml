@@ -1,0 +1,65 @@
+# Food Lens — its own Compose project, separate from Live Camera Studio (18765), GoTrip and Kervan.
+# Both services listen only on the host's loopback; the existing Nginx terminates HTTPS on one domain and routes
+# /api/ to the API and everything else to the web app (deploy/nginx/). The browser uses relative /api/ URLs only.
+#
+# Required: FOOD_LENS_RUN_DIR_HOST = absolute host path of ONE verified training run folder (best.pt, final.json,
+# class_mapping.json, preprocessing.json, config.json, test_metrics.json), outside the repository. It is mounted
+# read-only; the model is never copied into an image or into git.
+name: food-lens
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  api:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: food-lens-api:local
+    container_name: food-lens-api
+    ports:
+      - "127.0.0.1:${FOOD_LENS_API_PORT:-18776}:8000"
+    environment:
+      FOOD_LENS_RUN_DIR: /run/food-lens-model
+      FOOD_LENS_TORCH_THREADS: "2"
+    volumes:
+      - type: bind
+        source: ${FOOD_LENS_RUN_DIR_HOST:?set FOOD_LENS_RUN_DIR_HOST to the training run folder (outside the repo)}
+        target: /run/food-lens-model
+        read_only: true
+    # Small in-memory /tmp in case a library insists on one; uploads are processed in memory only.
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    mem_limit: 1g
+    cpus: 2
+
+  web:
+    <<: *hardening
+    build:
+      context: ./web
+      args:
+        FOOD_LENS_API_URL: http://api:8000
+    image: food-lens-web:local
+    container_name: food-lens-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FOOD_LENS_WEB_PORT:-18775}:3000"
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+      - /srv/food-lens-web/.next/cache:size=32m,uid=10001,gid=10001,mode=0700,noexec,nosuid,nodev
+    mem_limit: 512m
+    cpus: 1

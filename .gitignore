@@ -77,3 +77,7 @@ web/node_modules/
 web/.next/
 web/*.tsbuildinfo
 web/next-env.d.ts
+
+# Local environment files (Compose variables, secrets)
+.env
+.env.*

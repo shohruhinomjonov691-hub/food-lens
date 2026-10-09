@@ -1,0 +1,13 @@
+# Build context of the API image (Dockerfile) is the repository root. Allowlist: everything is excluded except
+# what the image copies, so the dataset, audit outputs, runs, checkpoints, bundles and images can never enter it.
+*
+!deploy/requirements-api.txt
+!app/
+!food_lens/
+!config/classes.json
+!content/
+!LICENSE
+!NOTICE.md
+**/__pycache__
+**/*.pyc
+**/.DS_Store
