@@ -114,6 +114,25 @@ Rules:
   the remaining quota of every variant in it; shortfalls are reported, never forced.
 - the build is deterministic: the same inputs in any order give byte-identical outputs.
 
+## Training (batch 3) — `notebooks/01_train_mobilenetv2.ipynb`
+
+Colab notebook; training has not been run yet.
+
+1. `python scripts/make_colab_bundle.py` → `dist/food_lens_bundle_<commit>.zip` (code + manifest, no
+   images; SHA-256 per file and the git commit in `BUNDLE.json`; refuses a dirty tree).
+2. Upload the zip to `MyDrive/food-lens/bundles/`, set `BUNDLE_ZIP` in cell 1.
+3. Run all cells with `SMOKE_TEST = True` (synthetic data; must end with `SMOKE TEST PASSED`), then
+   with `SMOKE_TEST = False` on a GPU runtime.
+
+What it does: verifies Food-101 files (read-only, SHA-256) and Commons originals (downloaded from
+`upload.wikimedia.org`, SHA-1 of the original, resized copy cached in `MyDrive/food-lens/commons_cache`);
+MobileNetV2 (ImageNet weights), train augmentation, deterministic eval preprocessing, class-weighted
+loss, seed 42; best checkpoint by val macro-F1; temperature and "not sure" threshold fitted on val;
+`final.json` locks the choice before the test split is used once. Each run writes a new folder
+`MyDrive/food-lens/runs/<UTC>_<commit>_seed42` (config, class mapping, preprocessing, checkpoint,
+history, calibration, val/test metrics, confusion matrix, per-variant results, predictions).
+Checkpoints stay private until the Food-101 public-use question is settled.
+
 ## Evaluation plan (batch 3, not started)
 
 - Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,
