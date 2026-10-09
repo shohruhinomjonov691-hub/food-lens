@@ -87,9 +87,9 @@ describe("FoodLens flow (mocked API)", () => {
     await analyze();
     await act(async () => predicts[0].d.resolve(MOCK_OK));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Yes, show ingredients" })); });
-    const radios = screen.getAllByRole("radio");
+    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
     expect(radios).toHaveLength(3);
-    expect(radios.every((r) => r.getAttribute("aria-checked") === "false")).toBe(true);
+    expect(radios.every((r) => !r.checked)).toBe(true);
     const show = screen.getByRole("button", { name: "Show ingredients" }) as HTMLButtonElement;
     expect(show.disabled).toBe(true);
     expect(ingredientCalls).toHaveLength(0);
@@ -239,5 +239,88 @@ describe("FoodLens: feedback for a bad file after a photo was analyzed (browser 
     expect(screen.getByRole("alert").textContent).toContain("Please choose a JPG, PNG or WebP image.");
     expect(screen.getByText("Top matches")).toBeTruthy();
     expect(screen.getAllByText("Cropped photo sent for analysis")).toHaveLength(1);
+  });
+});
+
+
+// Regressions for the Codex review of develop@6598c7a.
+describe("review fixes", () => {
+  it("1) Not sure stays Not sure after going back (API flag kept, not recomputed)", async () => {
+    const { predicts, ingredientCalls } = setup();
+    await upload();
+    await analyze();
+    // Rounded numbers that would look confident if recomputed: confidence == threshold, API says uncertain.
+    await act(async () => predicts[0].d.resolve({ kind: "ok", uncertain: true, threshold: 0.6,
+      predictions: [{ dish: "pizza", confidence: 0.6 }, { dish: "kebab", confidence: 0.3 }, { dish: "hot_dog", confidence: 0.1 }] }));
+    expect(screen.getByText("Not sure")).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Pizza/ })); });
+    expect(ingredientCalls).toHaveLength(1);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Back to results" })); });
+    expect(screen.getByText("Not sure")).toBeTruthy();
+    expect(screen.queryByText("Top matches")).toBeNull();
+  });
+
+  it("2) a throwing localStorage getter: English page, language switch still works", async () => {
+    const desc = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", { configurable: true,
+      get() { throw new DOMException("blocked", "SecurityError"); } });
+    try {
+      setup();
+      expect(screen.getByText("Add a food photo")).toBeTruthy();
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: "한국어" })); });
+      expect(screen.getByText("음식 사진 추가")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "localStorage", desc);
+    }
+  });
+
+  it("3) a crop export that finishes after unmount creates no object URL", async () => {
+    const { deps, view } = setup();
+    await upload();
+    const late = deferred<Blob>();
+    (deps.crop.cropToBlob as ReturnType<typeof vi.fn>).mockReturnValueOnce(late.promise);
+    const create = URL.createObjectURL as ReturnType<typeof vi.fn>;
+    const revoke = URL.revokeObjectURL as ReturnType<typeof vi.fn>;
+    fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
+    const before = create.mock.calls.length;
+    view.unmount();
+    await act(async () => late.resolve(new Blob(["late"], { type: "image/jpeg" })));
+    await flush();
+    expect(create.mock.calls.length).toBe(before);                       // no URL after unmount
+    const made = new Set(create.mock.results.map((r) => r.value));
+    for (const url of made) expect(revoke).toHaveBeenCalledWith(url);   // nothing left behind
+  });
+
+  it("3) an upload that finishes decoding after unmount revokes its URL", async () => {
+    const { deps, view } = setup();
+    const late = deferred<HTMLImageElement>();
+    (deps.loadImage as ReturnType<typeof vi.fn>).mockReturnValueOnce(late.promise);
+    const create = URL.createObjectURL as ReturnType<typeof vi.fn>;
+    const revoke = URL.revokeObjectURL as ReturnType<typeof vi.fn>;
+    create.mockClear();
+    revoke.mockClear();
+    await upload();                                                      // waits in loadImage
+    view.unmount();
+    await act(async () => late.resolve({ naturalWidth: 800, naturalHeight: 600 } as HTMLImageElement));
+    await flush();
+    const made = create.mock.results.map((r) => r.value);
+    expect(made.length).toBeLessThanOrEqual(1);
+    for (const url of made) expect(revoke).toHaveBeenCalledWith(url);
+  });
+
+  it("4) the kind is a native radio group: one name, nothing checked, labels select", async () => {
+    const { predicts } = setup();
+    await upload();
+    await analyze();
+    await act(async () => predicts[0].d.resolve(MOCK_OK));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Yes, show ingredients" })); });
+    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
+    expect(radios.every((r) => r.tagName === "INPUT" && r.type === "radio")).toBe(true);
+    expect(new Set(radios.map((r) => r.name)).size).toBe(1);             // one group: arrow keys move within it
+    expect(radios.some((r) => r.checked)).toBe(false);
+    expect(radios.every((r) => r.tabIndex === 0)).toBe(true);            // browser does the roving focus
+    await act(async () => { fireEvent.click(screen.getByText("Adana / koobideh")); });   // the visible label
+    expect((screen.getByRole("radio", { name: "Adana / koobideh" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("button", { name: "Show ingredients" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

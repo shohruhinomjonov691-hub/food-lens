@@ -109,6 +109,12 @@ p { margin: 6px 0 0; color: var(--ink-2); }
 .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; min-height: 44px; }
 .chip.muted { color: var(--muted); }
 .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.variant-group { border: 0; margin: 0; padding: 0; min-width: 0; }
+.variant-group legend { padding: 0; }
+.chip.radio { display: inline-flex; align-items: center; cursor: pointer; position: relative; }
+.chip.radio input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.chip.radio:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip.radio:has(input:focus-visible) { outline: 3px solid #f2a97e; outline-offset: 2px; }
 
 .notice { display: flex; gap: 12px; border-radius: 14px; padding: 14px 16px; }
 .notice svg { flex: none; margin-top: 2px; }

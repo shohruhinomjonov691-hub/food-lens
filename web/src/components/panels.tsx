@@ -165,14 +165,20 @@ export function VariantPanel({ t, dish, variant, onPick, onConfirm, onBack }: {
   return (
     <div>
       <div className="confirmed"><span className="tag" aria-hidden="true">✓</span><h2>{dishName(t, dish)}</h2></div>
-      <h3 style={{ marginTop: 16 }} id="variant-label">{t("variant.pick")}</h3>
-      <div className="chips" role="radiogroup" aria-labelledby="variant-label">
-        {variantsOf(dish).map((v) => (
-          <button key={v} type="button" role="radio" aria-checked={variant === v} className="chip" onClick={() => onPick(v)}>
-            {variantName(t, dish, v)}
-          </button>
-        ))}
-      </div>
+      {/* Native radios: Tab enters the group, arrow keys move and select, Space selects. Nothing is
+          preselected; the browser handles focus within the group. */}
+      <fieldset className="variant-group">
+        <legend><h3 style={{ marginTop: 16 }}>{t("variant.pick")}</h3></legend>
+        <div className="chips">
+          {variantsOf(dish).map((v) => (
+            <label key={v} className="chip radio">
+              <input type="radio" name={`variant-${dish}`} value={v} checked={variant === v}
+                onChange={() => onPick(v)} />
+              <span>{variantName(t, dish, v)}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <p className="small" style={{ marginTop: 8 }}>{t("variant.required")}</p>
       <div className="row">
         <button type="button" className="btn primary" disabled={!variant} onClick={onConfirm}>{t("variant.confirm")}</button>

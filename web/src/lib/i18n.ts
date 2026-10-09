@@ -176,6 +176,15 @@ export function isLang(value: unknown): value is Lang {
   return value === "en" || value === "ko";
 }
 
+/** window.localStorage, or undefined when even reading the property throws (blocked storage). */
+export function browserStorage(): Storage | undefined {
+  try {
+    return typeof window === "undefined" ? undefined : window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 // Storage can be blocked (private mode, settings): the app must still work, in English.
 export function loadLang(storage: Pick<Storage, "getItem"> | undefined): Lang {
   try {

@@ -29,6 +29,7 @@ export type State = {
   sentCrop: Photo | null;        // preview of exactly the crop that was sent
   predictions: Prediction[] | null;
   threshold: number | null;
+  uncertain: boolean | null;     // exactly as the API said; never recomputed from rounded numbers
   error: "server" | "network" | null;
   dish: Dish | null;
   variant: string | null;        // chosen by the user, never preselected
@@ -38,7 +39,8 @@ export type State = {
 
 export const initialState: State = {
   stage: "empty", photo: null, crop: DEFAULT_RECT, fileError: null, busy: false, seq: 0, sentCrop: null,
-  predictions: null, threshold: null, error: null, dish: null, variant: null, ingredientsSeq: 0, ingredients: null,
+  predictions: null, threshold: null, uncertain: null, error: null, dish: null, variant: null, ingredientsSeq: 0,
+  ingredients: null,
 };
 
 export type Action =
@@ -65,12 +67,13 @@ export function ownedUrls(s: State): string[] {
 }
 
 function resultStage(s: State): Stage {
-  if (s.predictions) return s.threshold !== null && s.predictions[0].confidence < s.threshold ? "uncertain" : "result";
+  if (s.predictions) return s.uncertain ? "uncertain" : "result";
   return s.error ? "error" : "not-ready";
 }
 
 const freshAnalysis = {
-  sentCrop: null, predictions: null, threshold: null, error: null, dish: null, variant: null, ingredients: null,
+  sentCrop: null, predictions: null, threshold: null, uncertain: null, error: null, dish: null, variant: null,
+  ingredients: null,
 } as const;
 
 export function reducer(s: State, a: Action): State {
@@ -99,7 +102,7 @@ export function reducer(s: State, a: Action): State {
       switch (o.kind) {
         case "aborted": return s;
         case "ok": {
-          const next = { ...s, predictions: o.predictions, threshold: o.threshold, error: null };
+          const next = { ...s, predictions: o.predictions, threshold: o.threshold, uncertain: o.uncertain, error: null };
           return { ...next, stage: o.uncertain ? "uncertain" : "result" };
         }
         case "not-ready": return { ...s, stage: "not-ready" };

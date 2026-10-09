@@ -3,7 +3,7 @@ import { fetchIngredients, parsePrediction, predict } from "@/lib/api";
 import { clampRect, DEFAULT_RECT, MIN_SIZE, moveRect, outputSize, resizeCorner, toPixels } from "@/lib/crop";
 import { DISHES, VARIANTS } from "@/lib/dishes";
 import { initialState, reducer, type State } from "@/lib/flow";
-import { loadLang, MESSAGES, saveLang, translate } from "@/lib/i18n";
+import { browserStorage, loadLang, MESSAGES, saveLang, translate } from "@/lib/i18n";
 import { checkDimensions, checkFile, sniff } from "@/lib/upload";
 
 const PREDS = [{ class: "kebab", confidence: 0.81 }, { class: "pizza", confidence: 0.1 }, { class: "hot_dog", confidence: 0.05 }];
@@ -79,6 +79,27 @@ describe("flow reducer: the user chooses the kind", () => {
     expect(stale).toBe(s);
     const reload = reducer(s, { type: "RELOAD_INGREDIENTS" });   // language change
     expect(reducer(reload, { type: "INGREDIENTS", seq: s.ingredientsSeq, outcome: { kind: "error" } })).toBe(reload);
+  });
+  it("back keeps the API's uncertain flag (no recomputation from rounded numbers)", () => {
+    const s = analyzing();
+    const unsure = reducer(s, { type: "PREDICTED", seq: s.seq, outcome: { kind: "ok", uncertain: true, threshold: 0.6,
+      predictions: [{ dish: "pizza", confidence: 0.6 }, { dish: "kebab", confidence: 0.3 }, { dish: "hot_dog", confidence: 0.1 }] } });
+    expect(unsure.stage).toBe("uncertain");
+    const back = reducer(reducer(unsure, { type: "CONFIRM_DISH", dish: "pizza" }), { type: "BACK_TO_RESULT" });
+    expect(back.stage).toBe("uncertain");
+    const sure = reducer(s, { type: "PREDICTED", seq: s.seq, outcome: { ...ok, uncertain: false,
+      predictions: [{ dish: "kebab", confidence: 0.5 }, ...ok.predictions.slice(1)], threshold: 0.6 } });
+    expect(reducer(reducer(sure, { type: "CONFIRM_DISH", dish: "pizza" }), { type: "BACK_TO_RESULT" }).stage).toBe("result");
+  });
+  it("browserStorage() swallows a throwing getter", () => {
+    const desc = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", { configurable: true, get() { throw new DOMException("x", "SecurityError"); } });
+    try {
+      expect(browserStorage()).toBeUndefined();
+      expect(loadLang(browserStorage())).toBe("en");
+    } finally {
+      Object.defineProperty(window, "localStorage", desc);
+    }
   });
   it("back returns to the result, or to not-ready for a manual pick", () => {
     expect(reducer(confirmed("kebab"), { type: "BACK_TO_RESULT" }).stage).toBe("result");

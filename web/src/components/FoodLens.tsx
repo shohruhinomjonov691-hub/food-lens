@@ -4,7 +4,7 @@ import * as api from "@/lib/api";
 import * as cropLib from "@/lib/crop";
 import { DISPLAY_ORDER, EMOJI, variantsOf } from "@/lib/dishes";
 import { initialState, ownedUrls, reducer, type Stage } from "@/lib/flow";
-import { type Key, type Lang, LANGS, loadLang, saveLang, translate } from "@/lib/i18n";
+import { browserStorage, type Key, type Lang, LANGS, loadLang, saveLang, translate } from "@/lib/i18n";
 import { checkDimensions, checkFile } from "@/lib/upload";
 import { CropEditor } from "./CropEditor";
 import { ImageIcon, Logo, Shield } from "./icons";
@@ -48,9 +48,9 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
   const t = useCallback((key: Key, vars?: Record<string, string>) => translate(lang, key, vars), [lang]);
 
   // Language: English by default, the choice survives reloads (and blocked storage).
-  useEffect(() => { setLang(loadLang(typeof window === "undefined" ? undefined : window.localStorage)); }, []);
+  useEffect(() => { setLang(loadLang(browserStorage())); }, []);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
-  const chooseLang = (l: Lang) => { setLang(l); saveLang(window.localStorage, l); };
+  const chooseLang = (l: Lang) => { setLang(l); saveLang(browserStorage(), l); };
 
   const makeUrl = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -67,7 +67,12 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
     for (const url of [...created.current]) if (!live.has(url)) revoke(url);
     if (sentBlob.current && !live.has(sentBlob.current.url)) sentBlob.current = null;
   }, [state]);
-  useEffect(() => () => { for (const url of [...created.current]) revoke(url); }, []);
+  // Unmount: invalidate pending upload/rotate/crop work (each checks `pick` before creating a URL) and
+  // revoke every URL that still exists.
+  useEffect(() => () => {
+    pick.current++;
+    for (const url of [...created.current]) revoke(url);
+  }, []);
 
   const openFile = useCallback(async (file: File | undefined | null) => {
     if (!file) return;
@@ -76,6 +81,7 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
     const check = await checkFile(file);
     if (mine !== pick.current) return;
     if (!check.ok) return dispatch({ type: "FILE_REJECTED", code: check.code });
+    if (mine !== pick.current) return;
     const url = makeUrl(file);
     try {
       const img = await deps.loadImage(url);
