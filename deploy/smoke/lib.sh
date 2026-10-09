@@ -15,12 +15,17 @@ asset_leaks() {
   # shellcheck disable=SC2086 # ASSET_DIRS is a space-separated list of paths without spaces
   out=$("${compose[@]}" exec -T web sh -c 'grep -rlE -e "$0" -- "$@"; echo "grep-exit=$?"' "$URL_RE" $ASSET_DIRS) || {
     echo "docker exec failed (exit $?)" >&2; return 2; }
-  rc=$(printf '%s\n' "$out" | sed -n 's/^grep-exit=\([0-9][0-9]*\)$/\1/p' | tail -n 1)
-  out=$(printf '%s\n' "$out" | grep -v '^grep-exit=' || true)
+  # Split off the status line with shell string operations only (no helper process whose failure could hide).
+  local last=${out##*$'\n'}
+  case "$last" in
+    grep-exit=*) rc=${last#grep-exit=} ;;
+    *) echo "asset scan produced no grep status" >&2; return 2 ;;
+  esac
+  if [ "$last" = "$out" ]; then out=""; else out=${out%$'\n'*}; fi
   case "$rc" in
     0) printf '%s\n' "$out"; return 1 ;;
     1) return 0 ;;
-    "") echo "asset scan produced no grep status" >&2; return 2 ;;
+    ''|*[!0-9]*) echo "asset scan produced an invalid grep status: $rc" >&2; return 2 ;;
     *) echo "asset scan failed (grep exit $rc)" >&2; return 2 ;;
   esac
 }

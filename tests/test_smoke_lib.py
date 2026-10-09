@@ -14,7 +14,8 @@ BASH = shutil.which("bash")
 pytestmark = pytest.mark.skipif(BASH is None, reason="bash not available")
 
 # Stub for `docker compose -f compose.yaml <cmd> ...`:
-#   exec -T <service> CMD...  -> runs CMD locally (or fails like a stopped container when STUB_EXEC_FAIL=1)
+#   exec -T <service> CMD...  -> runs CMD locally (or fails like a stopped container when STUB_EXEC_FAIL=1,
+#                                or prints $STUB_EXEC_OUTPUT instead)
 #   logs --no-color nginx     -> prints $STUB_NGINX_LOG (or fails when STUB_LOGS_FAIL=1)
 STUB = """#!/usr/bin/env bash
 shift 3   # compose -f compose.yaml
@@ -22,6 +23,7 @@ cmd=$1; shift
 case "$cmd" in
   exec)
     [ "${STUB_EXEC_FAIL:-0}" = 1 ] && { echo "service \\"web\\" is not running" >&2; exit 1; }
+    [ -n "${STUB_EXEC_OUTPUT:-}" ] && { printf '%s\\n' "$STUB_EXEC_OUTPUT"; exit 0; }
     shift 2   # -T <service>
     exec "$@" ;;
   logs)
@@ -81,6 +83,39 @@ def test_missing_asset_directory_fails_the_check(env):
 def test_docker_exec_failure_fails_the_check(env):
     rc, _, err = run(env, "asset_leaks", STUB_EXEC_FAIL="1")
     assert rc == 2 and "docker exec failed" in err
+
+
+def broken_helpers(env):
+    """Host-side text helpers that fail: grep -v (the old status filter), sed and tail. Recursive grep (the scan
+    itself, run by the stub's exec) still works, so only a helper failure is simulated."""
+    bindir = env["tmp"] / "broken"
+    bindir.mkdir()
+    real_grep = shutil.which("grep")
+    (bindir / "grep").write_text(f"""#!/usr/bin/env bash
+for a in "$@"; do [ "$a" = -v ] && {{ echo "grep: helper failure" >&2; exit 2; }}; done
+exec {real_grep} "$@"
+""")
+    for tool in ("sed", "tail"):
+        (bindir / tool).write_text(f"#!/usr/bin/env bash\necho '{tool}: helper failure' >&2\nexit 2\n")
+    for f in bindir.iterdir():
+        f.chmod(0o755)
+    return {"PATH": f"{bindir}:{env['env']['PATH']}"}
+
+
+def test_helper_filter_failure_cannot_hide_results(env):
+    path = broken_helpers(env)
+    assert run(env, "asset_leaks", **path)[0] == 0                       # clean stays PASS
+    (env["static"] / "chunk.js").write_text('fetch("http://127.0.0.1:8000/api/predict")')
+    rc, out, _ = run(env, "asset_leaks", **path)
+    assert rc == 1 and out.endswith("chunk.js")                          # leak and its file name survive
+
+
+def test_missing_or_invalid_grep_status_fails_the_check(env):
+    for output in ("/srv/x/chunk.js", "grep-exit=", "grep-exit=abc", "grep-exit=2"):
+        rc, _, err = run(env, "asset_leaks", STUB_EXEC_OUTPUT=output)
+        assert rc == 2, (output, err)
+    rc, out, _ = run(env, "asset_leaks", STUB_EXEC_OUTPUT="/srv/a.js\n/srv/b.js\ngrep-exit=0")
+    assert rc == 1 and out.splitlines() == ["/srv/a.js", "/srv/b.js"]   # file list kept, status line removed
 
 
 def test_served_html_scan(env):
