@@ -179,6 +179,31 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
   Disclaimer: "Typical ingredients; not identified from your photo."
 - Not measured yet: latency/RAM on the 2-CPU server (needs the trained checkpoint).
 
+## Frontend (batch 6) — `web/` (Next.js 16.3.8, React 19.3.0, TypeScript)
+
+```bash
+cd web && npm ci
+npm test            # vitest (unit + component tests with mocked API)
+npm run build && FOOD_LENS_API_URL=http://127.0.0.1:8000 npm start   # proxies /api/* to the FastAPI service
+```
+
+Flow (warm light theme from `design/food-lens/`, EN default + KO saved in `localStorage` `fl.lang`):
+upload (JPEG/PNG/WebP, ≤ 10 MB, magic bytes and dimensions checked in the browser) → crop (drag the
+frame or corners, keyboard arrows, reset, rotate) → **Analyze sends exactly the confirmed crop** (JPEG,
+longest side ≤ 2048 px) → top-3 or "not sure" from the API → the user confirms (or picks) the dish →
+kebab/dessert: the user must pick the kind (nothing preselected) → typical ingredients with sources
+and "Typical ingredients; not identified from your photo".
+
+- States: empty, reading, crop, analyzing, result, not sure, **MODEL_NOT_READY** (no trained model:
+  no numbers are shown; the user can still pick a dish for its ingredients), invalid file, server and
+  network errors, ingredient loading/error.
+- Async safety: every photo/crop/analysis has a sequence number and an `AbortController`; a late
+  prediction or ingredient answer for an older choice is aborted and ignored.
+- Object URLs (photo, rotated photo, sent crop) are revoked when no longer shown and on unmount;
+  canvases are released after export.
+- No mock or demo data in `src/` or `app/` (tested). `web/tests/e2e/mock-api.mjs` is a **test-only**
+  mock used for browser checks of UI states; its numbers are fixtures, not model results.
+
 ## Evaluation plan (batch 3, not started)
 
 - Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,

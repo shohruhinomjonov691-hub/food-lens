@@ -277,3 +277,11 @@ def test_content_validator_catches_problems():
     lopsided = json.loads(json.dumps(content))
     lopsided["dishes"]["hot_dog"]["ingredients"]["ko"].pop()
     assert any("equal-length" in p for p in validate_content(lopsided))
+
+
+def test_source_titles_are_readable():
+    """Titles are shown to users: no URL escapes such as %C4%B1 (found in the browser check)."""
+    content = load_content()
+    titles = [s["title"] for d in content["dishes"].values()
+              for e in ([d] if "sources" in d else d["variants"].values()) for s in e["sources"]]
+    assert titles and all("%" not in t and "_" not in t for t in titles), titles
