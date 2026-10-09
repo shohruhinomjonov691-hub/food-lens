@@ -11,6 +11,7 @@ Endpoints
   GET  /api/ingredients/{dish}         ?variant=…&lang=en|ko -> typical ingredients with sources
 """
 import os
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -65,10 +66,18 @@ async def not_ready_handler(request: Request, exc: ModelNotReady):
     return error(503, "MODEL_NOT_READY", str(exc))
 
 
+CONTENT_LENGTH = re.compile(r"[0-9]{1,19}")   # ASCII digits only; 19 digits fit a signed 64-bit integer
+
+
 async def read_limited_body(request: Request) -> bytes:
     declared = request.headers.get("content-length")
-    if declared is not None and declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
-        raise ImageError(413, "file_too_large", f"The file must be at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
+    if declared is not None:
+        # Checked before int(): a malformed, negative or absurdly long value is a client error (400),
+        # never an exception inside the server; a well-formed value above the limit is 413.
+        if not CONTENT_LENGTH.fullmatch(declared.strip()):
+            raise ImageError(400, "invalid_content_length", "The Content-Length header is not a valid length.")
+        if int(declared) > MAX_UPLOAD_BYTES:
+            raise ImageError(413, "file_too_large", f"The file must be at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
     body = bytearray()
     async for chunk in request.stream():
         body.extend(chunk)

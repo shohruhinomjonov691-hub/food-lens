@@ -159,9 +159,14 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
 | `GET /api/ingredients/{dish}?variant=…&lang=en\|ko` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant` |
 
 - **No trained model yet** → `/api/predict` answers **503 `MODEL_NOT_READY`** with the reason; it never
-  returns placeholder predictions. A run folder is loaded only if it is not a smoke run, has a test
-  evaluation, its `best.pt` matches the SHA-256 in `final.json`, its classes are `config/classes.json`
-  in the same order, and its preprocessing recipe/spec equal `food_lens/preprocess.py`.
+  returns placeholder predictions. A run folder is loaded only if `config.json` has `smoke_test: false`;
+  `test_metrics.json` is a complete notebook result (positive `n`, finite metrics in [0, 1],
+  confusion matrix summing to `n`); `final.json` names `best.pt`, whose bytes match the locked SHA-256
+  (those exact bytes are loaded, `weights_only=True`); temperature is a finite number in [0.05, 20]
+  and the threshold in [0, 1]; classes are `config/classes.json` in the same order; and the
+  preprocessing recipe/spec equal `food_lens/preprocess.py`. Broken JSON → `MODEL_NOT_READY`.
+- `Content-Length` must be 1–19 ASCII digits (else 400 `invalid_content_length`); above 10 MB → 413;
+  the streamed body is limited as well.
 - Prediction uses `food_lens.preprocess.inference_tensor` — the same steps as the test split.
 - Upload validation (in memory, like Face Blur): raw body (no multipart spooling), ≤ 10 MB, real
   format by magic bytes (JPEG, PNG, WebP), ≤ 8000 px side and ≤ 25 MP checked from the header before

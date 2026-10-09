@@ -51,8 +51,27 @@ def make_run(root, smoke=False, classes=CLASSES, recipe_id=None, spec=None, with
     w("final.json", {"checkpoint": "best.pt", "checkpoint_sha256": hashlib.sha256(buf.getvalue()).hexdigest(),
                      "temperature": 1.7, "threshold": 0.6})
     if with_test:
-        w("test_metrics.json", {})
+        w("test_metrics.json", notebook_test_metrics())
     return run
+
+
+def notebook_test_metrics(n=50, seed=0):
+    """The dict notebooks/01_train_mobilenetv2.ipynb cell 11 writes (same keys, same helpers)."""
+    from food_lens import train_utils as tu
+    rng = np.random.default_rng(seed)
+    y = rng.integers(0, len(CLASSES), n)
+    p = np.where(rng.random(n) < 0.8, y, (y + 1) % len(CLASSES))
+    overall = tu.summary(y, p, len(CLASSES))
+    return {
+        **overall, "classes": list(CLASSES),
+        "per_class": {c: {"precision": overall["precision"][i], "recall": overall["recall"][i],
+                          "f1": overall["f1"][i], "support": overall["support"][i]} for i, c in enumerate(CLASSES)},
+        "per_variant": [{"target": "pizza", "variant": "pizza", "n": 10, "recall": 0.8, "predicted_as": {"pizza": 8},
+                         "small_n": True}],
+        "selective_at_threshold": {**tu.selective(np.eye(len(CLASSES))[p], y, 0.6), "threshold": 0.6},
+        "bootstrap_95ci": tu.bootstrap_ci(y, p, len(CLASSES), n_boot=50, seed=0),
+        "bootstrap_subset": "kebab recall", "note": "test used once",
+    }
 
 
 @pytest.fixture
