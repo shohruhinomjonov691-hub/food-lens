@@ -18,7 +18,7 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILES = [
     "config/classes.json",
-    "food_lens/__init__.py", "food_lens/classes.py", "food_lens/imaging.py", "food_lens/train_utils.py",
+    "food_lens/__init__.py", "food_lens/classes.py", "food_lens/imaging.py", "food_lens/preprocess.py", "food_lens/train_utils.py",
     "manifests/manifest_v1.csv", "manifests/stats_v1.json",
 ]
 

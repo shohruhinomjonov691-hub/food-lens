@@ -34,6 +34,16 @@ def test_training_notebook_defaults_and_bundle_contents():
     assert "manifests/manifest_v1.csv" in FILES
     # The guard rails the notebook relies on.
     for needle in ("tu.new_run_dir(RUNS_ROOT", "final.json", "test was already evaluated",
-                   "checkpoint changed after locking", "Commons original does not match the manifest SHA-1",
-                   "fit_temperature(val_logits", "select_threshold(val_probs", "CrossEntropyLoss(weight="):
+                   "checkpoint changed after locking", "pp.CommonsCache(COMMONS_CACHE, tu.checksum_ok",
+                   "fit_temperature(val_logits", "select_threshold(val_probs", "CrossEntropyLoss(weight=",
+                   "tu.assert_unlocked(RUN_DIR)", 'tu.guarded_write_bytes(RUN_DIR, "best.pt"',
+                   'tu.guarded_write_bytes(RUN_DIR, "history.csv"', "pp.model_input(img)"):
         assert needle in source, needle
+
+
+def test_training_outputs_are_only_written_through_the_lock_guard():
+    _, cells = code_cells(ROOT / "notebooks" / "01_train_mobilenetv2.ipynb")
+    training = next(c for c in cells if c.startswith("# 9)"))
+    assert "torch.save(" in training and "buf)" in training          # serialized to memory first
+    assert "BEST_PATH + \".tmp\"" not in training and "os.replace" not in training
+    assert 'open(f"{RUN_DIR}/history.csv"' not in training

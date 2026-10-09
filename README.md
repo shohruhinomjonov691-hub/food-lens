@@ -125,10 +125,22 @@ Colab notebook; training has not been run yet.
    with `SMOKE_TEST = False` on a GPU runtime.
 
 What it does: verifies Food-101 files (read-only, SHA-256) and Commons originals (downloaded from
-`upload.wikimedia.org`, SHA-1 of the original, resized copy cached in `MyDrive/food-lens/commons_cache`);
-MobileNetV2 (ImageNet weights), train augmentation, deterministic eval preprocessing, class-weighted
-loss, seed 42; best checkpoint by val macro-F1; temperature and "not sure" threshold fitted on val;
-`final.json` locks the choice before the test split is used once. Each run writes a new folder
+`upload.wikimedia.org`, SHA-1 of the original); MobileNetV2 (ImageNet weights), train augmentation,
+class-weighted loss, seed 42; best checkpoint by val macro-F1; temperature (exact log-sum-exp NLL,
+interval ends included) and "not sure" threshold fitted on val; `final.json` locks the choice before
+the test split is used once, and once a run is locked no checkpoint or history can be written to it.
+
+Preprocessing ([`food_lens/preprocess.py`](food_lens/preprocess.py)) has two separate, versioned stages:
+
+1. **Dataset cache** (`cache_image`, recipe `CACHE_RECIPE`, ID in every cache key): decode with EXIF
+   orientation and transparency on white → shorter side exactly 256 (bicubic, torchvision sizes) →
+   JPEG q95 4:4:4. Commons images are stored once in `MyDrive/food-lens/commons_cache`
+   (`index.json`: original SHA-1, recipe ID, stored SHA-256); training always decodes the stored bytes,
+   so a fresh and a reused cache give identical pixels.
+2. **Model input** (`model_input`, spec `MODEL_INPUT`): shorter side 256 → center crop 224 →
+   [0, 1] → ImageNet mean/std, float32 CHW — the same for val, test and inference, whatever the source.
+   `inference_tensor(upload bytes)` applies stage 1 + stage 2, so an uploaded photo is processed exactly
+   like a test image. Train augmentation (RandomResizedCrop, flip, ColorJitter) works on the stage-1 image. Each run writes a new folder
 `MyDrive/food-lens/runs/<UTC>_<commit>_seed42` (config, class mapping, preprocessing, checkpoint,
 history, calibration, val/test metrics, confusion matrix, per-variant results, predictions).
 Checkpoints stay private until the Food-101 public-use question is settled.

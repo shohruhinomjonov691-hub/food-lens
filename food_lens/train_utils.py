@@ -64,12 +64,20 @@ def softmax(logits, temperature=1.0):
 
 
 def nll(logits, labels, temperature=1.0):
-    p = softmax(logits, temperature)
-    return float(-np.log(np.clip(p[np.arange(len(labels)), labels], 1e-12, None)).mean())
+    """Mean negative log-likelihood, computed exactly with log-sum-exp (no probability clipping)."""
+    z = np.asarray(logits, dtype=np.float64) / temperature
+    labels = np.asarray(labels)
+    m = z.max(axis=1, keepdims=True)
+    log_norm = (m + np.log(np.exp(z - m).sum(axis=1, keepdims=True)))[:, 0]
+    return float((log_norm - z[np.arange(len(labels)), labels]).mean())
 
 
 def fit_temperature(logits, labels, low=0.05, high=20.0, iters=100):
-    """Temperature T > 0 minimising validation NLL (golden-section search on log T)."""
+    """Temperature T in [low, high] minimising validation NLL.
+
+    Golden-section search on log T, then the interval ends are compared too, so a minimum at a
+    boundary (NLL still falling at `high`, or rising from `low`) is returned instead of an inner point.
+    """
     a, b = math.log(low), math.log(high)
     g = (math.sqrt(5) - 1) / 2
     c, d = b - g * (b - a), a + g * (b - a)
@@ -83,7 +91,8 @@ def fit_temperature(logits, labels, low=0.05, high=20.0, iters=100):
             a, c, fc = c, d, fd
             d = a + g * (b - a)
             fd = nll(logits, labels, math.exp(d))
-    return math.exp((a + b) / 2)
+    candidates = [math.exp((a + b) / 2), low, high]
+    return min(candidates, key=lambda t: (nll(logits, labels, t), t))
 
 
 def ece(probs, labels, bins=15):
@@ -151,6 +160,31 @@ def bootstrap_ci(y_true, y_pred, k, n_boot=1000, seed=0, alpha=0.05, mask=None):
                 sub.append(float((y_true[idx][m] == y_pred[idx][m]).mean()))
     q = lambda v: [float(np.quantile(v, alpha / 2)), float(np.quantile(v, 1 - alpha / 2))] if v else None
     return {"accuracy": q(acc), "macro_f1": q(mf1), "subset_recall": q(sub), "n_boot": n_boot, "seed": seed}
+
+
+# ---------- run lock ----------
+
+LOCK_FILES = ("final.json", "test_metrics.json", "test_predictions.csv")
+
+
+class RunLocked(RuntimeError):
+    pass
+
+
+def assert_unlocked(run_dir):
+    """Raise if the run's final choice is locked or its test split was used; nothing may change then."""
+    present = [name for name in LOCK_FILES if os.path.exists(os.path.join(run_dir, name))]
+    if present:
+        raise RunLocked(f"run is locked ({', '.join(present)} exists): refusing to write training outputs")
+
+
+def guarded_write_bytes(run_dir, name, data):
+    """Atomically write a training output (checkpoint, history) unless the run is locked."""
+    assert_unlocked(run_dir)
+    path = os.path.join(run_dir, name)
+    with open(path + ".tmp", "wb") as f:
+        f.write(data)
+    os.replace(path + ".tmp", path)
 
 
 # ---------- files ----------
