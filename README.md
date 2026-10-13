@@ -4,9 +4,14 @@ Upload a food photo, get the top-3 dish predictions with confidence, an "uncerta
 calibrated threshold and, after you confirm the dish, its **typical** ingredients with sources (not
 the ingredients detected in the photo).
 
-Status: batch 1–2 (repository skeleton and data preparation). No model has been trained yet; there
-are no published metrics. The old 89.45% validation figure from the earlier `computer_vision`
-notebook is a different, unseeded 6-class run and is not used here.
+**Live demo: <https://food.gotrips.cloud>** — MVP complete (5 classes, EN/KO).
+
+Status (2026-10-14): one MobileNetV2 model trained in Colab (2026-10-09) and evaluated once on the
+held-out test split — accuracy **0.935**, macro-F1 **0.928** (n = 806; see
+[Evaluation](#evaluation-run-20261009t124948z_9ab1801_seed42)). The FastAPI + Next.js app runs in Docker
+behind Nginx and was deployed publicly on 2026-10-10. The trained weights and the dataset images are
+**not** published. Whether Food-101 permits a public demo is still an open question — see
+[Licenses](#licenses); deploying it was the project owner's decision and does not settle it.
 
 ## Classes
 
@@ -62,13 +67,12 @@ Commons rows are `upload.wikimedia.org` URLs, verified by the Commons sha1 when 
   | --- | --- | --- |
   | Redistributing Food-101 images | **Redistribution permission not established** — not redistributed | Third-party copyright; no text grants it; the archived terms require written permission for copying or distributing content |
   | Publishing the trained weights | **Not covered** — not done | The texts do not address models; nothing grants it, so it is not assumed |
-  | Public inference service (food.gotrips.cloud) | **Open** — not deployed | The model is derived from the images; a public demo is not clearly "scientific fair use" and no text permits it |
+  | Public inference service (food.gotrips.cloud) | **Open** — deployed publicly on 2026-10-10 by the project owner's decision | The model is derived from the images; a public demo is not clearly "scientific fair use" and no text permits it. The deployment is a risk decision, not evidence of permission |
 
-  Paths, from least extra work: (a) no public launch; the deploy files stay ready and the demo runs
-  locally or for reviewers; (b) an access-restricted, non-commercial demo (Nginx basic auth, no weights
-  or images distributed), which narrows exposure but is still not an explicit permission; (c) retrain
-  the four Food-101 classes on images with verified open licenses (as was done for kebab), after which
-  a public service has a documented basis. The decision belongs to the project owner.
+  Ways to settle it: ask the Food-101 authors (ETH) about a non-commercial demo of a trained model; get
+  legal advice; or retrain the four Food-101 classes on images with verified open licenses (as was done
+  for kebab). None of these has been done. The service returns class probabilities only; it does not
+  show or distribute Food-101 images or the weights.
 - **Wikimedia Commons** kebab photos: each file keeps its own license (CC0 / public domain / CC BY /
   CC BY-SA) and author, recorded per file in `manifests/kebab_commons.csv`. Attribution is required
   wherever these images are shown (the app shows none).
@@ -133,7 +137,8 @@ Rules:
 
 ## Training (batch 3) — `notebooks/01_train_mobilenetv2.ipynb`
 
-Colab notebook; training has not been run yet.
+Colab notebook. Run once for real on 2026-10-09 (Tesla T4, torch 2.11.0+cu130, bundle `9ab1801`);
+results in [Evaluation](#evaluation-run-20261009t124948z_9ab1801_seed42). Steps to reproduce:
 
 1. `python scripts/make_colab_bundle.py` → `dist/food_lens_bundle_<commit>.zip` (code + manifest, no
    images; SHA-256 per file and the git commit in `BUNDLE.json`; refuses a dirty tree).
@@ -175,8 +180,8 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
 | `POST /api/predict` (raw image bytes) | `predictions`: top-3 `{class, confidence}` (calibrated: locked temperature), `uncertain` (top-1 < locked threshold), `threshold`, `variant: null` |
 | `GET /api/ingredients/{dish}?variant=…&lang=en\|ko` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant` |
 
-- **No trained model yet** → `/api/predict` answers **503 `MODEL_NOT_READY`** with the reason; it never
-  returns placeholder predictions. A run folder is loaded only if `config.json` has `smoke_test: false`;
+- **No verified run folder** (`FOOD_LENS_RUN_DIR` unset or failing the checks below) → `/api/predict`
+  answers **503 `MODEL_NOT_READY`** with the reason; it never returns placeholder predictions. A run folder is loaded only if `config.json` has `smoke_test: false`;
   `test_metrics.json` is a complete notebook result (positive `n`, finite metrics in [0, 1],
   confusion matrix summing to `n`); `final.json` names `best.pt`, whose bytes match the locked SHA-256
   (those exact bytes are loaded, `weights_only=True`); temperature is a finite number in [0.05, 20]
@@ -194,7 +199,7 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
 - `content/ingredients.json`: EN + KO lists, each with the English Wikipedia articles read on
   2026-10-09 and what each source supports; Korean is a translation (source language: English).
   Disclaimer: "Typical ingredients; not identified from your photo."
-- Not measured yet: latency/RAM on the 2-CPU server (needs the trained checkpoint).
+- Latency and memory: see [Deployment](#deployment--composeyaml-dockerfile-webdockerfile-deploy).
 
 ## Frontend (batch 6) — `web/` (Next.js 16.3.8, React 19.3.0, TypeScript)
 
@@ -211,7 +216,7 @@ longest side ≤ 2048 px) → top-3 or "not sure" from the API → the user conf
 kebab/dessert: the user must pick the kind (nothing preselected) → typical ingredients with sources
 and "Typical ingredients; not identified from your photo".
 
-- States: empty, reading, crop, analyzing, result, not sure, **MODEL_NOT_READY** (no trained model:
+- States: empty, reading, crop, analyzing, result, not sure, **MODEL_NOT_READY** (no verified model loaded:
   no numbers are shown; the user can still pick a dish for its ingredients), invalid file, server and
   network errors, ingredient loading/error.
 - Async safety: every photo/crop/analysis has a sequence number and an `AbortController`; a late
@@ -221,7 +226,11 @@ and "Typical ingredients; not identified from your photo".
 - No mock or demo data in `src/` or `app/` (tested). `web/tests/e2e/mock-api.mjs` is a **test-only**
   mock used for browser checks of UI states; its numbers are fixtures, not model results.
 
-## Deployment (prepared, not deployed) — `compose.yaml`, `Dockerfile`, `web/Dockerfile`, `deploy/`
+## Deployment — `compose.yaml`, `Dockerfile`, `web/Dockerfile`, `deploy/`
+
+Deployed on 2026-10-10 at <https://food.gotrips.cloud> from commit `e681f1b` (later commits change
+documentation only), on an Ubuntu 24.04 x86_64 server (2 vCPU, 8 GB) that also hosts other apps, behind
+its existing Nginx 1.24 with a Let's Encrypt certificate (webroot). Steps and checks: `deploy/nginx/README.md`.
 
 Two containers in the Compose project `food-lens`. The API is FastAPI with CPU-only PyTorch; the web
 container is Next.js standalone. Both images are built on pinned base images, run as non-root uid 10001
@@ -245,28 +254,90 @@ deploy/nginx/check-config.sh
 FOOD_LENS_RUN_DIR_HOST=/abs/path/to/run SMOKE_IMAGE=/abs/photo.jpg SMOKE_EXPECT=pizza deploy/smoke/check.sh
 ```
 
-## Evaluation plan (batch 3)
+Measured on the **production server** (2026-10-10; the commands were run on the server by the owner and
+the output was reported back): HTTP from inside the API container to itself, synthetic JPEGs, 8 warm-up
++ 60 sequential requests, `cpus: 2`, 2 torch threads; Nginx and the internet are not included.
 
-- Internal test (manifest `test`, used once): accuracy, macro-F1, per-class precision/recall,
-  per-variant kebab recall, confusion matrix, with bootstrap confidence intervals (kebab test is small).
-- Temperature scaling and the "not sure" threshold are chosen on `val` only, never on `test`.
-- Source check: the same test photos at full frame and cropped to the dish; kebab errors inspected.
-- **Phone challenge set**: a small set of the user's own phone photos covering all five classes and the
-  kebab variants, never used for training or tuning; it measures the source gap (Commons vs Food-101
-  vs real phone photos). Size and collection are decided later; it is not part of this batch.
+| Input | p50 | p95 |
+| --- | ---: | ---: |
+| 2048×1536 (largest crop the web app sends) | 114 ms | 129 ms |
+| 864×648 (typical crop) | 39 ms | 50 ms |
+| 512×384 | 34 ms | 43 ms |
+
+Memory peak (cgroup): API 348 MiB of its 1 GiB limit, web 76 MiB of 512 MiB. Concurrent load was not
+measured. Production checks after deploy: HTTPS 200, HTTP → 301, Nginx wrote no request temp files,
+`docker diff` of the API container empty. A phone test of the full flow on the live site was done by
+the owner (user report, not independently verified).
+
+## Evaluation (run `20261009T124948Z_9ab1801_seed42`)
+
+**Model and data.** torchvision MobileNetV2 (ImageNet `IMAGENET1K_V2` initialisation), 224×224 input,
+3 head-only epochs then 15 fine-tuning epochs (AdamW, cosine schedule), class-weighted cross-entropy,
+seed 42. Data: dataset v1 above — 3748 train / 806 val / 806 test images, split per variant with
+near-duplicate groups and Commons author series kept within one split.
+
+**Model selection and calibration (val only).**
+- Best epoch by val macro-F1: epoch 15 of 18 (val accuracy 0.943, macro-F1 0.941).
+- Temperature scaling: T = 1.627; val ECE 0.034 → 0.018, NLL 0.236 → 0.199.
+- "Not sure" threshold 0.462: the lowest one with val selective accuracy ≥ 0.95 (0.951 at coverage 0.989).
+- Both were locked in `final.json` before the test split was used, once.
+
+**Test (n = 806), with bootstrap 95% CI (1000 resamples):**
+
+| Metric | Value |
+| --- | --- |
+| Accuracy | 0.935 (0.918–0.953) |
+| Macro-F1 | 0.928 (0.907–0.947) |
+| At the threshold | "not sure" for 1.5%; accuracy 0.945 on the remaining 98.5% |
+
+| Class | Precision | Recall | F1 | n |
+| --- | ---: | ---: | ---: | ---: |
+| dessert | 0.936 | 0.977 | 0.956 | 300 |
+| hamburger | 0.951 | 0.913 | 0.932 | 150 |
+| hot_dog | 0.892 | 0.880 | 0.886 | 150 |
+| kebab | 0.926 | 0.893 (CI 0.807–0.978) | 0.909 | 56 |
+| pizza | 0.966 | 0.947 | 0.956 | 150 |
+
+Kebab and dessert variants (recall; the model predicts the class, not the variant):
+
+| Variant | n | Recall | Misclassified as |
+| --- | ---: | ---: | --- |
+| dessert / cheesecake | 150 | 0.967 | hot_dog 2, pizza 3 |
+| dessert / chocolate_cake | 150 | 0.987 | kebab 1, pizza 1 |
+| kebab / skewered | 34 | 0.941 | dessert 2 |
+| kebab / minced_skewer | **13** | 0.769 | dessert 3 |
+| kebab / doner_shawarma | **9** | 0.889 | hot_dog 1 |
+
+The largest confusions are hot_dog → dessert (9), hamburger → hot_dog (8), hot_dog → hamburger (5),
+pizza → hot_dog (5) and kebab → dessert (5). The two small kebab variants are reported for completeness; with 9 and 13 images
+their recall is not a reliable estimate.
+
+**Not evaluated:** the planned full-frame vs. cropped comparison and a **phone challenge set** (the
+owner's own phone photos, never used for training or tuning) have not been run, so performance on real
+phone photos and the Commons/Food-101 source gap are not measured. Checks done so far are anecdotal: a
+few local photos through the live app and the local stack.
 
 ## Known limitations
 
-- Kebab comes from a different source (Commons) than the other classes (Food-101). Photo style,
+- **Five classes only.** Any other dish is forced into one of them.
+- **Non-food or out-of-distribution images are not reliably rejected.** The "not sure" threshold was
+  fitted on in-distribution val images; a photo of a text page was classified as dessert at 48%, above
+  the threshold (local check). There is no "not food" detector.
+- **Crop-sensitive.** The same photo can score very differently with and without cropping to the dish
+  (one hamburger test photo: 43% uncropped, 82% cropped). The app asks the user to crop.
+- **Source gap.** Kebab comes from Wikimedia Commons, the other classes from Food-101; photo style,
   background and framing differ, so the model can learn source cues instead of the dish. Resizing to
-  the same resolution does not remove this. Evaluation must check kebab errors and confusions
-  explicitly; more diverse kebab photos are the real fix.
-- Food-101 training images were intentionally not cleaned by its authors and contain some label noise.
-- `dessert` has about twice as many images as the other Food-101 classes, and `kebab` (372) about a
+  the same resolution does not remove this, and it has not been measured (no phone challenge set yet).
+- **Ingredients are not detected from the photo.** They are typical ingredients of the confirmed dish
+  and variant, from Wikipedia; the app says so.
+- **Small subgroups.** Kebab test has 56 images (minced on skewers 13, döner/shawarma 9), so kebab and
+  variant metrics have wide uncertainty.
+- Food-101 training images were intentionally not cleaned by their authors and contain some label noise.
+- `dessert` has about twice as many images as the other Food-101 classes, and `kebab` (368) about a
   third; training uses class weights and reports macro-F1 and per-class recall.
-- Kebab test has only 56 images (döner/shawarma 9), so kebab metrics have wide uncertainty.
 - Commons photos are grouped by author within a variant, so one photographer's series never spans
   train and test. Food-101 has no author information.
+- Food-101 public-use terms are unresolved (see [Licenses](#licenses)); the weights stay private.
 
 ## Layout
 
@@ -275,7 +346,7 @@ config/       classes.json, data_prep.json, kebab_review.json
 food_lens/    classes, imaging (load/EXIF/alpha, pHash), dedup, split, manifest validation
 scripts/      provenance, Commons collection, kebab review, manifest build
 manifests/    generated manifests (no images)
-notebooks/    00_dataset_audit.ipynb (read-only Drive audit, Colab)
+notebooks/    00_dataset_audit.ipynb (read-only Drive audit), 01_train_mobilenetv2.ipynb (training, Colab)
 design/       food-lens mockup (EN/KO, warm light theme)
 tests/        pytest
 app/          FastAPI inference API; content/ ingredients

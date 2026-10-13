@@ -18,7 +18,9 @@ The archive’s `license_agreement.txt` states that the images come from Foodspo
 ETH Zurich, and that any use beyond scientific fair use must be negotiated with the respective picture owners
 according to the Foodspotting terms of use. The `manifests/` files list Food-101 file names and checksums only.
 The trained model is derived from these images; its public use is an **open question** — see
-“Data → Licenses” in `README.md`.
+“Data → Licenses” in `README.md`. The demo at https://food.gotrips.cloud was made public by the project
+owner's decision (2026-10-10); it returns class probabilities only and does not distribute the images or
+the weights. Making it public does not settle the question.
 
 ## Wikimedia Commons (kebab images)
 

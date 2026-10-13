@@ -1,7 +1,12 @@
 # Deploying behind the existing Nginx (food.gotrips.cloud)
 
-> **Not deployed.** Before a public launch, the Food-101 question in “Data → Licenses” (`README.md`) must be
-> decided. These files only prepare the deployment.
+> **Deployed on 2026-10-10** with these steps, from commit `e681f1b`: <https://food.gotrips.cloud>. The owner
+> ran the commands on the server. The Food-101 public-use question in “Data → Licenses” (`README.md`) is
+> still open; making the site public was the owner's decision and does not settle it.
+>
+> Differences from the templates on that server: `listen [::]:443 ssl;` was removed from the installed
+> `food-lens.conf` (step 3), because no site there listens on IPv6 port 443. Paths were `/opt/food-lens`
+> and `/opt/food-lens-runs/<run>`.
 
 Target: an x86_64 server with 2 CPU / 8 GB RAM, Docker + Compose, Nginx 1.24.0 already running with sites in
 `/etc/nginx/conf.d/`, HTTPS via Let’s Encrypt (certbot webroot). Live Camera Studio (`127.0.0.1:18765`), GoTrip
@@ -24,14 +29,16 @@ json-file 10 MB × 3. CPU limits are caps, not reservations: the containers shar
 - `nginx -v` (expect 1.24.0); `ls /etc/nginx/conf.d/`; `grep -RIn "listen .*443" /etc/nginx/` (the existing sites
   use `listen 443 ssl` without `http2`; this site does the same); `ss -ltnp | grep -E ':1877[56]\b'` (expect nothing).
 - The trained run folder copied to the server **outside the repository**, e.g.
-  `/srv/food-lens-runs/20261009T124948Z_9ab1801_seed42/`, owned by root, readable by uid 10001
-  (`chmod -R a+rX`), and its `best.pt` SHA-256 checked against `final.json`.
+  `/opt/food-lens-runs/20261009T124948Z_9ab1801_seed42/`, owned by root, readable by uid 10001
+  (directory 755, files 644), with every file's SHA-256 checked against the copy it came from
+  (`best.pt` against `final.json`).
 
 ## 1. Build and start the containers
 
 ```bash
-cd /srv/food-lens   # the repository checkout
-export FOOD_LENS_RUN_DIR_HOST=/srv/food-lens-runs/20261009T124948Z_9ab1801_seed42
+cd /opt/food-lens   # the repository checkout
+# .env is git-ignored and holds only this path, so later `docker compose` commands find it too
+printf 'FOOD_LENS_RUN_DIR_HOST=%s\n' /opt/food-lens-runs/20261009T124948Z_9ab1801_seed42 > .env
 docker compose up -d --build --wait
 curl -s http://127.0.0.1:18776/health      # "model_ready": true and the expected checkpoint_sha256
 curl -sI http://127.0.0.1:18775/ | head -1  # HTTP/1.1 200
@@ -57,8 +64,14 @@ Do not use `certbot --nginx`, which rewrites server blocks.
 
 ```bash
 sudo install -m 644 deploy/nginx/food-lens.conf.example /etc/nginx/conf.d/food-lens.conf
+# only if no other site listens on [::]:443 (check: sudo grep -RIn 'listen \[::\]:443' /etc/nginx/):
+sudo sed -i '/listen \[::\]:443 ssl;/d' /etc/nginx/conf.d/food-lens.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+`systemctl reload` returns before the old Nginx workers have finished, so a check run immediately afterwards
+can still get the previous configuration (404, or another site's certificate). Wait a few seconds before
+verifying.
 
 For an access-restricted launch, create `/etc/nginx/food-lens.htpasswd` on the server (never in git) and
 uncomment the two `auth_basic` lines before installing.
@@ -75,8 +88,15 @@ Then upload a photo in the browser and check that the other sites still answer a
 
 ## Rollback
 
-Remove `/etc/nginx/conf.d/food-lens.conf`, reload Nginx, then `docker compose down` in the checkout. The other
-sites are unaffected.
+Move the site file aside (nothing is deleted), reload Nginx, then stop the containers if wanted:
+
+```bash
+sudo mkdir -p /root/food-lens-rollback && sudo mv /etc/nginx/conf.d/food-lens.conf /root/food-lens-rollback/
+sudo nginx -t && sudo systemctl reload nginx
+cd /opt/food-lens && docker compose down
+```
+
+The other sites are unaffected. The certificate, checkout, run folder and images stay in place.
 
 ## Local checks (no server needed)
 
