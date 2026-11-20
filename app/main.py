@@ -6,9 +6,14 @@ large uploads to a temporary file on disk. The browser crops the photo before up
 
 Endpoints
   GET  /health                         service status and whether a verified model is loaded
-  POST /api/predict                    raw image bytes -> top-3 calibrated classes + "not sure" flag,
-                                       or 503 MODEL_NOT_READY while no trained run is configured
-  GET  /api/ingredients/{dish}         ?variant=…&lang=en|ko -> typical ingredients with sources
+  POST /api/predict                    raw image bytes -> result tier (high | low | abstain | non_food) and, for
+                                       high/low, the top-3 calibrated classes; 503 MODEL_NOT_READY while no trained
+                                       run is configured; 503 SERVER_BUSY when too many requests are running
+  POST /api/fallback                   raw image bytes -> extra analysis by a vision model, only on the user's request
+                                       (status "used" | "unavailable"); needs ANTHROPIC_API_KEY
+  GET  /api/evaluation                 test results of the loaded run (per class, per variant, tiers, limits)
+  GET  /api/ingredients/{dish}         ?variant=…&lang=en|ko&avoid=halal,nuts -> typical ingredients with sources and,
+                                       when `avoid` is given, the allergen/dietary guard for them
 """
 import os
 import re
@@ -18,14 +23,21 @@ from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from app.config import MAX_UPLOAD_BYTES, RUN_DIR_ENV, TORCH_THREADS
+from app import guard
+from app.config import (MAX_CONCURRENT_PREDICTIONS, MAX_UPLOAD_BYTES, MAX_WAITING_PREDICTIONS, RUN_DIR_ENV,
+                        TORCH_THREADS)
+from app.fallback import FallbackAnalyzer
 from app.image_io import ImageError, validate_image
 from app.ingredients import IngredientError, load_content, lookup
+from app.limits import Busy, ConcurrencyGate
 from app.model import ModelNotReady, Predictor
 from food_lens.classes import CLASSES, VARIANTS
 
 PREDICTOR = Predictor()
 CONTENT = load_content()
+ALLERGENS = guard.load_allergens(CONTENT)
+FALLBACK = FallbackAnalyzer.from_env()
+PREDICT_GATE = ConcurrencyGate(MAX_CONCURRENT_PREDICTIONS, MAX_WAITING_PREDICTIONS)
 
 
 @asynccontextmanager
@@ -61,6 +73,13 @@ async def ingredient_error_handler(request: Request, exc: IngredientError):
     return error(exc.status_code, exc.code, exc.message)
 
 
+@app.exception_handler(Busy)
+async def busy_handler(request: Request, exc: Busy):
+    response = error(503, "SERVER_BUSY", "Too many photos are being analyzed right now. Please try again in a moment.")
+    response.headers["Retry-After"] = "2"
+    return response
+
+
 @app.exception_handler(ModelNotReady)
 async def not_ready_handler(request: Request, exc: ModelNotReady):
     return error(503, "MODEL_NOT_READY", str(exc))
@@ -94,9 +113,12 @@ def health():
         "model_ready": PREDICTOR.ready,
         "model_reason": PREDICTOR.reason,
         "model": {"run": info.run_name, "checkpoint_sha256": info.checkpoint_sha256,
-                  "temperature": info.temperature, "threshold": info.threshold} if info else None,
+                  "temperature": info.temperature, "threshold": info.threshold,
+                  "high_threshold": info.high_threshold} if info else None,
         "classes": list(CLASSES),
         "variants": {k: list(v) for k, v in VARIANTS.items()},
+        "restrictions": list(ALLERGENS["restrictions"]),
+        "fallback_available": FALLBACK.configured,
     }
 
 
@@ -105,13 +127,33 @@ async def predict(request: Request):
     if not PREDICTOR.ready:
         raise ModelNotReady(PREDICTOR.reason)
     data = await read_limited_body(request)
-    await run_in_threadpool(validate_image, data)
-    result = await run_in_threadpool(PREDICTOR.predict, data)
+    async with PREDICT_GATE:                      # at most a few at once; the rest wait briefly or get 503
+        await run_in_threadpool(validate_image, data)
+        result = await run_in_threadpool(PREDICTOR.predict, data)
     return {**result, "model": {"run": PREDICTOR.info.run_name, "checkpoint_sha256": PREDICTOR.info.checkpoint_sha256},
-            "variant": None,
+            "variant": None, "fallback_available": FALLBACK.configured,
             "variant_note": "The model predicts the class only; for kebab and dessert the user chooses the kind."}
 
 
+@app.post("/api/fallback")
+async def fallback(request: Request):
+    """Extra analysis, only when the user asks. A provider problem is a normal answer (status "unavailable"), so the
+    page keeps the earlier result; a bad image is still a client error."""
+    data = await read_limited_body(request)
+    fmt = await run_in_threadpool(validate_image, data)
+    return await FALLBACK.analyze(data, fmt)
+
+
+@app.get("/api/evaluation")
+def evaluation():
+    if not PREDICTOR.ready:
+        raise ModelNotReady(PREDICTOR.reason)
+    return PREDICTOR.info.evaluation
+
+
 @app.get("/api/ingredients/{dish}")
-def ingredients(dish: str, variant: str | None = None, lang: str = "en"):
-    return lookup(CONTENT, dish, variant, lang)
+def ingredients(dish: str, variant: str | None = None, lang: str = "en", avoid: str | None = None):
+    result = lookup(CONTENT, dish, variant, lang)
+    ids = guard.parse_avoid(avoid, ALLERGENS)
+    result["guard"] = guard.evaluate(ALLERGENS, CONTENT, dish, variant, lang, ids) if ids else None
+    return result

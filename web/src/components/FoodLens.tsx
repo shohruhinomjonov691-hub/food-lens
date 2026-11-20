@@ -3,19 +3,21 @@ import { type DragEvent, type ReactNode, useCallback, useEffect, useReducer, use
 import * as api from "@/lib/api";
 import * as cropLib from "@/lib/crop";
 import { DISPLAY_ORDER, EMOJI, variantsOf } from "@/lib/dishes";
-import { initialState, ownedUrls, reducer, type Stage } from "@/lib/flow";
+import { initialState, noFoodFromFallback, ownedUrls, reducer, type Stage } from "@/lib/flow";
 import { browserStorage, type Key, type Lang, LANGS, loadLang, saveLang, translate } from "@/lib/i18n";
+import { loadAvoid, type Restriction, saveAvoid } from "@/lib/restrictions";
 import { checkDimensions, checkFile } from "@/lib/upload";
 import { CropEditor } from "./CropEditor";
 import { ImageIcon, Logo, Shield } from "./icons";
 import {
-  dishName, EmptyPanel, ErrorPanel, FileErrorNotice, IngredientsPanel, LoadingPanel, NotReadyPanel, ResultPanel,
-  UncertainPanel, VariantPanel,
+  AbstainPanel, dishName, EmptyPanel, ErrorPanel, EvaluationSection, type EvalState, FallbackSection, FileErrorNotice,
+  IngredientsPanel, LoadingPanel, LowConfidencePanel, NonFoodPanel, NotReadyPanel, ResultPanel, VariantPanel,
 } from "./panels";
 
 const STEPS: Key[] = ["steps.upload", "steps.crop", "steps.result", "steps.ingredients"];
 const STEP_OF: Record<Stage, number> = {
-  empty: 0, crop: 1, analyzing: 1, result: 2, uncertain: 2, "not-ready": 2, error: 2, variant: 2, ingredients: 3,
+  empty: 0, crop: 1, analyzing: 1, result: 2, low: 2, abstain: 2, "non-food": 2, "not-ready": 2, error: 2, variant: 2,
+  ingredients: 3,
 };
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -44,6 +46,8 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
   const pick = useRef(0);                              // latest file selection
   const sentBlob = useRef<{ url: string; blob: Blob } | null>(null);
   const created = useRef(new Set<string>());           // object URLs this component made
+  const [evalState, setEvalState] = useState<EvalState>({ kind: "idle" });
+  const [evalTry, setEvalTry] = useState(0);              // bumped each time the section is opened without data
 
   const t = useCallback((key: Key, vars?: Record<string, string>) => translate(lang, key, vars), [lang]);
 
@@ -51,6 +55,10 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
   useEffect(() => { setLang(loadLang(browserStorage())); }, []);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const chooseLang = (l: Lang) => { setLang(l); saveLang(browserStorage(), l); };
+
+  // Dietary restrictions: remembered on this device only (and optional: blocked storage just means "none").
+  useEffect(() => { dispatch({ type: "SET_AVOID", avoid: loadAvoid(browserStorage()) }); }, []);
+  const chooseAvoid = (next: Restriction[]) => { dispatch({ type: "SET_AVOID", avoid: next }); saveAvoid(browserStorage(), next); };
 
   const makeUrl = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -142,16 +150,40 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
     return () => controller.abort();
   }, [state.stage, state.seq, state.sentCrop, deps]);
 
-  // Ingredients belong to one `ingredientsSeq` (dish + user-chosen kind + language).
+  // The extra check belongs to one `seq`; it is asked for by the user, sends the same crop, and a new photo/crop
+  // aborts it. A failure never touches the result that is already shown.
+  useEffect(() => {
+    if (state.fallback.status !== "loading" || !state.sentCrop || sentBlob.current?.url !== state.sentCrop.url) return;
+    const controller = new AbortController();
+    const seq = state.seq;
+    deps.api.fallback(sentBlob.current.blob, controller.signal).then((outcome) => {
+      if (!controller.signal.aborted) dispatch({ type: "FALLBACK_DONE", seq, outcome });
+    });
+    return () => controller.abort();
+  }, [state.fallback.status, state.seq, state.sentCrop, deps]);
+
+  // The evaluation is fetched once, when the user opens the section (again after an error).
+  useEffect(() => {
+    if (evalTry === 0) return;
+    setEvalState({ kind: "loading" });
+    const controller = new AbortController();
+    deps.api.fetchEvaluation(controller.signal).then((outcome) => {
+      if (!controller.signal.aborted && outcome.kind !== "aborted") setEvalState(outcome);
+    });
+    return () => controller.abort();
+  }, [evalTry, deps]);
+  const openEval = () => { if (evalState.kind === "idle" || evalState.kind === "error") setEvalTry((n) => n + 1); };
+
+  // Ingredients belong to one `ingredientsSeq` (dish + user-chosen kind + language + restrictions).
   useEffect(() => {
     if (state.stage !== "ingredients" || !state.dish || state.ingredients !== null) return;
     const controller = new AbortController();
     const seq = state.ingredientsSeq;
-    deps.api.fetchIngredients(state.dish, state.variant, lang, controller.signal).then((outcome) => {
+    deps.api.fetchIngredients(state.dish, state.variant, lang, state.avoid, controller.signal).then((outcome) => {
       if (!controller.signal.aborted) dispatch({ type: "INGREDIENTS", seq, outcome });
     });
     return () => controller.abort();
-  }, [state.stage, state.dish, state.variant, state.ingredientsSeq, state.ingredients, lang, deps]);
+  }, [state.stage, state.dish, state.variant, state.avoid, state.ingredientsSeq, state.ingredients, lang, deps]);
 
   const firstLang = useRef(true);
   useEffect(() => {
@@ -180,14 +212,25 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
   const step = STEP_OF[s.stage];
   const confirmDish = (d: Parameters<typeof dishName>[1]) => dispatch({ type: "CONFIRM_DISH", dish: d });
 
+  const extraCheck = (
+    <FallbackSection t={t} available={s.fallbackAvailable} state={s.fallback} primary={s.predictions?.[0]?.dish ?? null}
+      onAsk={() => dispatch({ type: "FALLBACK_ASK" })} onUse={confirmDish} />
+  );
+
   let right: ReactNode;
   switch (s.stage) {
     case "empty": right = <EmptyPanel t={t} title="empty.title" body="empty.body" />; break;
     case "crop": right = <EmptyPanel t={t} title="pending.title" body="pending.body" crop />; break;
     case "analyzing": right = <LoadingPanel t={t} />; break;
-    case "result": right = <ResultPanel t={t} predictions={s.predictions!} onConfirm={confirmDish} />; break;
-    case "uncertain":
-      right = <UncertainPanel t={t} predictions={s.predictions!} onPick={confirmDish} onRetry={chooseAnother} />; break;
+    case "result": right = <ResultPanel t={t} predictions={s.predictions!} onConfirm={confirmDish} fallback={extraCheck} />; break;
+    case "low":
+      right = <LowConfidencePanel t={t} predictions={s.predictions!} onPick={confirmDish} onRetry={chooseAnother} fallback={extraCheck} />;
+      break;
+    case "abstain": right = <AbstainPanel t={t} onPick={confirmDish} onRetry={chooseAnother} fallback={extraCheck} />; break;
+    case "non-food":
+      right = <NonFoodPanel t={t} byFallback={noFoodFromFallback(s)} onRetry={chooseAnother}
+        onEarlier={noFoodFromFallback(s) ? () => dispatch({ type: "FALLBACK_DISMISS" }) : null} />;
+      break;
     case "not-ready": right = <NotReadyPanel t={t} onPick={confirmDish} />; break;
     case "error":
       right = <ErrorPanel t={t} kind={s.error ?? "server"} onRetry={() => void analyze()} onChoose={chooseAnother} />; break;
@@ -199,6 +242,7 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
     case "ingredients":
       right = <IngredientsPanel t={t} dish={s.dish!} variant={s.variant} lang={lang}
         data={s.ingredients?.kind === "ok" ? s.ingredients.data : null} failed={s.ingredients?.kind === "error"}
+        avoid={s.avoid} onAvoid={chooseAvoid}
         onRetry={() => dispatch({ type: "RELOAD_INGREDIENTS" })}
         onChangeVariant={variantsOf(s.dish!).length ? () => dispatch({ type: "CHANGE_VARIANT" }) : null}
         onBack={() => dispatch({ type: "BACK_TO_RESULT" })} onNew={chooseAnother} />;
@@ -302,6 +346,9 @@ export default function FoodLens({ deps = realDeps }: { deps?: Deps }) {
             <div className="privacy"><Shield /><span>{t("privacy")}</span></div>
           </section>
           <section ref={rightPanel} className="card pane" aria-live="polite" style={{ scrollMarginTop: 12 }}>{right}</section>
+        </div>
+        <div className="wrap" style={{ marginTop: 20 }}>
+          <EvaluationSection t={t} state={evalState} onOpen={openEval} />
         </div>
       </main>
       <footer><div className="wrap">{t("footer")}</div></footer>

@@ -158,3 +158,29 @@ footer { padding: 28px 0 36px; color: var(--muted); font-size: 12.5px; text-alig
   .row .btn { flex: 1 1 auto; }
   .drop { padding: 26px 14px; }
 }
+
+/* Result tiers, dietary guard, extra check, evaluation */
+.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; border: 1px solid transparent; }
+.badge.tier-high, .badge.guard-badge-safe { background: var(--ok-soft); color: var(--ok); border-color: #cfe0b3; }
+.badge.tier-low, .badge.tier-abstain, .badge.guard-badge-unknown { background: var(--warn-soft); color: var(--warn); border-color: #f0cf9f; }
+.badge.tier-non_food, .badge.guard-badge-warning { background: var(--err-soft); color: var(--err); border-color: #f1bdb7; }
+.notice .badge { display: inline-flex; }
+.guard-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.guard-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+.guard-item.guard-warning { border-color: #f1bdb7; background: #fff7f6; }
+.guard-item.guard-unknown { border-color: #f0cf9f; background: #fffaf1; }
+.guard-item .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+.guard-item ul { margin: 4px 0 0; padding-left: 18px; }
+.guard-item p { margin-top: 6px; }
+.fallback p + p { margin-top: 4px; }
+.eval { margin-top: 0; }
+.eval summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.eval summary:focus-visible { outline: 3px solid #f2a97e; outline-offset: 2px; }
+.eval-levels, .eval-limits { margin: 8px 0 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+.eval-limits { padding-left: 18px; list-style: disc; }
+.eval-levels li { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; margin-top: 8px; }
+.table-wrap table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.table-wrap th, .table-wrap td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table-wrap thead th { color: var(--muted); font-weight: 600; }
+.table-wrap tbody th { font-weight: 600; color: var(--ink); }

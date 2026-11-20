@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from app import image_io
+from app import image_io, tiers
 from app import main as api
 from app.config import MAX_UPLOAD_BYTES
 from app.ingredients import load_content, lookup, validate_content
@@ -132,22 +132,29 @@ def test_predict_contract(client_ready):
     r = client_ready.post("/api/predict", content=data)
     assert r.status_code == 200, r.text
     body = r.json()
-    preds = body["predictions"]
-    assert len(preds) == 3 and len({p["class"] for p in preds}) == 3
-    assert all(p["class"] in CLASSES and 0 <= p["confidence"] <= 1 for p in preds)
-    assert [p["confidence"] for p in preds] == sorted((p["confidence"] for p in preds), reverse=True)
-    assert body["uncertain"] == (preds[0]["confidence"] < 0.6) and body["threshold"] == 0.6
-    assert body["variant"] is None and "user chooses" in body["variant_note"]
-    assert "calibrated" in body["confidence"]
-    assert r.headers["cache-control"] == "no-store"
     # Same numbers as the eval path with the locked temperature.
     import torch
     with torch.no_grad():
         logits = api.PREDICTOR.model(torch.from_numpy(pp.inference_tensor(data))[None]).double().numpy()[0]
     probs = np.exp(logits / 1.7 - (logits / 1.7).max())
     probs /= probs.sum()
-    assert preds[0]["class"] == CLASSES[int(probs.argmax())]
-    assert preds[0]["confidence"] == pytest.approx(round(float(probs.max()), 4))
+    tier = tiers.classify(float(probs.max()), 0.6, 0.8)
+    assert body["tier"] == tier and body["threshold"] == 0.6 and body["high_threshold"] == 0.8
+    assert body["non_food_reason"] is None
+    preds = body["predictions"]
+    if tier == "abstain":
+        assert preds == []                                   # the model does not guess
+    else:
+        assert len(preds) == 3 and len({p["class"] for p in preds}) == 3
+        assert all(p["class"] in CLASSES and 0 <= p["confidence"] <= 1 for p in preds)
+        assert [p["confidence"] for p in preds] == sorted((p["confidence"] for p in preds), reverse=True)
+        assert preds[0]["class"] == CLASSES[int(probs.argmax())]
+        assert preds[0]["confidence"] == pytest.approx(round(float(probs.max()), 4))
+    assert "uncertain" not in body
+    assert body["variant"] is None and "user chooses" in body["variant_note"]
+    assert body["fallback_available"] is False
+    assert "calibrated" in body["confidence"]
+    assert r.headers["cache-control"] == "no-store"
 
 
 def test_predict_writes_no_files_and_logs_no_image(client_ready, monkeypatch, caplog):

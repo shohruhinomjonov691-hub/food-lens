@@ -34,6 +34,10 @@ services:
     environment:
       FOOD_LENS_RUN_DIR: /run/food-lens-model
       FOOD_LENS_TORCH_THREADS: "2"
+      # Optional extra check by a vision model (the photo is sent to Anthropic only when the user presses the button).
+      # Empty = the feature reports "unavailable". Set it in the shell or an untracked .env file, never in git.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      FOOD_LENS_FALLBACK_MODEL: ${FOOD_LENS_FALLBACK_MODEL:-claude-haiku-5-5}
     volumes:
       - type: bind
         source: ${FOOD_LENS_RUN_DIR_HOST:?set FOOD_LENS_RUN_DIR_HOST to the training run folder (outside the repo)}

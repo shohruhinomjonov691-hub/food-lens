@@ -1,0 +1,353 @@
+{
+ "version": 1,
+ "basis": {
+  "en": "Derived by reading the typical-ingredient text in ingredients.json (English Wikipedia summaries). It is not a label, a lab result or a statement about the photographed dish. Written 2026-11-19; a person should review it before relying on it.",
+  "ko": "ingredients.json의 일반 재료 문구(영어 위키백과 요약)를 읽고 작성했습니다. 라벨이나 검사 결과, 촬영한 음식 자체에 대한 설명이 아닙니다. 2026-11-19 작성, 사용 전 사람이 검토해야 합니다."
+ },
+ "tags": [
+  "pork",
+  "alcohol",
+  "gelatin_or_rennet",
+  "gluten",
+  "dairy",
+  "egg",
+  "nuts",
+  "soy",
+  "sesame",
+  "fish",
+  "shellfish"
+ ],
+ "restrictions": {
+  "halal": {
+   "tags": [
+    "pork",
+    "alcohol",
+    "gelatin_or_rennet"
+   ],
+   "label": {
+    "en": "Halal / no pork",
+    "ko": "할랄 / 돼지고기 제외"
+   },
+   "note": {
+    "en": "Checks typical ingredients for pork, alcohol and unspecified sources of gelatin or rennet. Whether the meat is halal-slaughtered and how the food was prepared cannot be known from a photo.",
+    "ko": "일반 재료를 기준으로 돼지고기, 알코올, 원료가 불분명한 젤라틴이나 렌넷을 확인합니다. 고기가 할랄 도축인지, 어떻게 조리되었는지는 사진으로 알 수 없습니다."
+   }
+  },
+  "nuts": {
+   "tags": [
+    "nuts"
+   ],
+   "label": {
+    "en": "Nuts",
+    "ko": "견과류"
+   },
+   "note": null
+  },
+  "gluten": {
+   "tags": [
+    "gluten"
+   ],
+   "label": {
+    "en": "Gluten",
+    "ko": "글루텐"
+   },
+   "note": null
+  },
+  "dairy": {
+   "tags": [
+    "dairy"
+   ],
+   "label": {
+    "en": "Dairy",
+    "ko": "유제품"
+   },
+   "note": null
+  },
+  "egg": {
+   "tags": [
+    "egg"
+   ],
+   "label": {
+    "en": "Egg",
+    "ko": "달걀"
+   },
+   "note": null
+  },
+  "soy": {
+   "tags": [
+    "soy"
+   ],
+   "label": {
+    "en": "Soy",
+    "ko": "대두"
+   },
+   "note": null
+  },
+  "sesame": {
+   "tags": [
+    "sesame"
+   ],
+   "label": {
+    "en": "Sesame",
+    "ko": "참깨"
+   },
+   "note": null
+  },
+  "fish_shellfish": {
+   "tags": [
+    "fish",
+    "shellfish"
+   ],
+   "label": {
+    "en": "Fish / shellfish",
+    "ko": "생선 / 갑각류"
+   },
+   "note": null
+  }
+ },
+ "messages": {
+  "safe": {
+   "en": "No listed typical ingredient matches this restriction. Recipes and cross-contact vary: still check the actual ingredients.",
+   "ko": "일반 재료 중 이 제한에 해당하는 것이 없습니다. 조리법과 교차 오염은 다를 수 있으니 실제 재료를 꼭 확인하세요."
+  },
+  "warning": {
+   "en": "A typical ingredient may match this restriction (see which one below). Check with the cook or the label.",
+   "ko": "일반 재료 중 이 제한에 해당할 수 있는 것이 있습니다(아래 참고). 조리한 분이나 라벨에 확인하세요."
+  },
+  "unknown": {
+   "en": "The ingredient information is not complete enough to confirm this. Not verified: check the actual ingredients.",
+   "ko": "재료 정보가 충분하지 않아 확인할 수 없습니다. 검증되지 않았으니 실제 재료를 확인하세요."
+  }
+ },
+ "entries": {
+  "pizza": {
+   "Leavened wheat-based dough": {
+    "contains": [
+     "gluten"
+    ]
+   },
+   "Tomato sauce": {},
+   "Cheese, typically mozzarella": {
+    "contains": [
+     "dairy"
+    ],
+    "unknown": [
+     "gelatin_or_rennet"
+    ]
+   },
+   "Other toppings, which vary": {
+    "unknown": [
+     "*"
+    ]
+   },
+   "In some styles: olive oil, garlic, oregano or basil": {}
+  },
+  "hamburger": {
+   "Patty of ground meat, typically beef": {
+    "unknown": [
+     "pork"
+    ]
+   },
+   "Sliced bun or bread roll": {
+    "contains": [
+     "gluten"
+    ],
+    "unknown": [
+     "dairy",
+     "egg",
+     "sesame",
+     "soy"
+    ]
+   },
+   "Lettuce, tomato, onion or pickles": {},
+   "Ketchup, mustard, mayonnaise or relish": {
+    "may": [
+     "egg"
+    ],
+    "unknown": [
+     "soy"
+    ]
+   },
+   "Cheese (in a cheeseburger)": {
+    "may": [
+     "dairy"
+    ],
+    "unknown": [
+     "gelatin_or_rennet"
+    ]
+   }
+  },
+  "hot_dog": {
+   "Sausage of pork, beef, chicken, turkey or a mix": {
+    "may": [
+     "pork"
+    ],
+    "unknown": [
+     "gluten",
+     "dairy",
+     "soy"
+    ]
+   },
+   "Partially sliced bun": {
+    "contains": [
+     "gluten"
+    ],
+    "unknown": [
+     "dairy",
+     "egg",
+     "sesame",
+     "soy"
+    ]
+   },
+   "Mustard, ketchup, relish or onions": {},
+   "Toppings such as sauerkraut, chili, grated cheese or coleslaw": {
+    "may": [
+     "dairy"
+    ],
+    "unknown": [
+     "pork",
+     "egg",
+     "gluten",
+     "soy"
+    ]
+   }
+  },
+  "dessert/cheesecake": {
+   "Soft fresh cheese such as cream cheese, ricotta or quark": {
+    "contains": [
+     "dairy"
+    ],
+    "unknown": [
+     "gelatin_or_rennet"
+    ]
+   },
+   "Eggs or cream": {
+    "may": [
+     "egg",
+     "dairy"
+    ]
+   },
+   "Sugar": {},
+   "Base of crushed cookies, graham crackers or pastry": {
+    "contains": [
+     "gluten"
+    ],
+    "unknown": [
+     "dairy",
+     "egg",
+     "nuts",
+     "soy"
+    ]
+   },
+   "Often topped with fruit, whipped cream or chocolate syrup": {
+    "may": [
+     "dairy"
+    ],
+    "unknown": [
+     "nuts",
+     "soy"
+    ]
+   }
+  },
+  "dessert/chocolate_cake": {
+   "Chocolate or cocoa powder": {
+    "unknown": [
+     "dairy",
+     "soy",
+     "nuts"
+    ]
+   },
+   "Flour": {
+    "contains": [
+     "gluten"
+    ]
+   },
+   "Sugar": {},
+   "Eggs": {
+    "contains": [
+     "egg"
+    ]
+   },
+   "Butter or oil": {
+    "may": [
+     "dairy"
+    ]
+   },
+   "Baking powder or baking soda": {},
+   "Often chocolate icing": {
+    "unknown": [
+     "dairy",
+     "soy",
+     "nuts"
+    ]
+   }
+  },
+  "kebab/skewered": {
+   "Cubes of meat, traditionally lamb; also beef, pork, chicken or fish": {
+    "may": [
+     "pork",
+     "fish"
+    ]
+   },
+   "Shashlik: marinade of vinegar, dry wine or sour juice with onions, garlic, herbs and spices": {
+    "may": [
+     "alcohol"
+    ],
+    "unknown": [
+     "dairy",
+     "soy",
+     "sesame"
+    ]
+   },
+   "Vegetables on the skewer such as bell peppers, onions, mushrooms or tomatoes": {},
+   "Often served with onions with sumac, grilled pepper and tomato, or pilaf": {
+    "unknown": [
+     "nuts",
+     "gluten",
+     "dairy"
+    ]
+   }
+  },
+  "kebab/minced_skewer": {
+   "Minced lamb (beef in some versions)": {
+    "unknown": [
+     "egg",
+     "gluten"
+    ]
+   },
+   "Adana: lamb tail fat and sweet red pepper": {},
+   "Koobideh: grated onion and black pepper": {},
+   "Salt": {},
+   "Often served with flatbread (lavash) or steamed rice, grilled tomatoes and onions with sumac": {
+    "may": [
+     "gluten"
+    ]
+   }
+  },
+  "kebab/doner_shawarma": {
+   "Thin slices of seasoned meat: lamb, beef or chicken": {
+    "unknown": [
+     "dairy",
+     "soy"
+    ]
+   },
+   "Seasoning such as onion, salt, thyme and peppers (döner) or cumin, cardamom, cinnamon and paprika (shawarma)": {},
+   "Pita or a flatbread such as lavash": {
+    "contains": [
+     "gluten"
+    ]
+   },
+   "Tomato, lettuce, cabbage, onion, cucumber or pickles": {},
+   "Sauces such as garlic sauce or tahini": {
+    "may": [
+     "sesame"
+    ],
+    "unknown": [
+     "dairy",
+     "egg",
+     "soy"
+    ]
+   }
+  }
+ }
+}

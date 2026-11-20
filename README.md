@@ -1,8 +1,9 @@
 # Food Lens
 
-Upload a food photo, get the top-3 dish predictions with confidence, an "uncertain" answer below a
-calibrated threshold and, after you confirm the dish, its **typical** ingredients with sources (not
-the ingredients detected in the photo).
+Upload a food photo and get one of four result levels (confident match, low confidence, not sure, not food)
+with the top-3 dish predictions where the model stands behind them. After you confirm the dish you see its
+**typical** ingredients with sources (not the ingredients detected in the photo), optionally checked against your
+dietary restrictions, and you can ask for an extra check by a vision model.
 
 **Live demo: <https://food.gotrips.cloud>** — MVP complete (5 classes, EN/KO).
 
@@ -29,8 +30,9 @@ The model predicts the class only. `kebab` and `dessert` group several dishes, s
 typical ingredients **per variant the user picks** (never one merged list, and never as the contents
 of the photo). Variants are recorded per image in the manifest and used for stratified splitting.
 
-Plov/pilaf is out of scope. Calories, allergens and detecting the exact contents of a photo are out of
-scope.
+Plov/pilaf is out of scope. Calories and detecting the exact contents of a photo are out of scope. The allergen
+and dietary check works on the **typical ingredients of the confirmed dish**, never on the photo (see
+[Result levels, dietary guard and extra check](#result-levels-dietary-guard-and-extra-check)).
 
 ## Data
 
@@ -176,9 +178,11 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
 
 | Endpoint | Result |
 | --- | --- |
-| `GET /health` | `status`, `model_ready`, `model_reason`, loaded run + checkpoint SHA-256, classes, variants |
-| `POST /api/predict` (raw image bytes) | `predictions`: top-3 `{class, confidence}` (calibrated: locked temperature), `uncertain` (top-1 < locked threshold), `threshold`, `variant: null` |
-| `GET /api/ingredients/{dish}?variant=…&lang=en\|ko` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant` |
+| `GET /health` | `status`, `model_ready`, `model_reason`, loaded run + checkpoint SHA-256, thresholds, classes, variants, `restrictions`, `fallback_available` |
+| `POST /api/predict` (raw image bytes) | `tier` (`high` \| `low` \| `abstain` \| `non_food`), `predictions` (top-3 `{class, confidence}`, calibrated with the locked temperature, **empty** for `abstain` and `non_food`), `threshold`, `high_threshold`, `non_food_reason`, `fallback_available`, `variant: null` |
+| `POST /api/fallback` (raw image bytes) | extra check by a vision model, only on the user's request: `{status: "used", verdict, dish, provider, model}` or `{status: "unavailable", reason}` (HTTP 200); image errors as for predict |
+| `GET /api/evaluation` | test results of the loaded run: per class, per variant, 95% intervals, tier table, limits (built from the run's own files) |
+| `GET /api/ingredients/{dish}?variant=…&lang=en\|ko&avoid=halal,nuts` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant`; `guard` is `null` without `avoid` |
 
 - **No verified run folder** (`FOOD_LENS_RUN_DIR` unset or failing the checks below) → `/api/predict`
   answers **503 `MODEL_NOT_READY`** with the reason; it never returns placeholder predictions. A run folder is loaded only if `config.json` has `smoke_test: false`;
@@ -189,7 +193,15 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
   preprocessing recipe/spec equal `food_lens/preprocess.py`. Broken JSON → `MODEL_NOT_READY`.
 - `Content-Length` must be 1–19 ASCII digits (else 400 `invalid_content_length`); above 10 MB → 413;
   the streamed body is limited as well.
-- Prediction uses `food_lens.preprocess.inference_tensor` — the same steps as the test split.
+- Prediction uses the same steps as the test split (`food_lens.preprocess`). **Contract change (2026-11-19):** the
+  boolean `uncertain` was replaced by `tier`; `abstain` no longer returns any dish or percentage.
+- **Load protection.** Measured on the real model before the fix (Mac, 2 torch threads, one request ≈ 50 ms): 8
+  simultaneous 1024×768 requests took ≈ 10 s each and 16 simultaneous requests did not finish within 120 s,
+  because every request thread also ran torch threads. `/api/predict` now runs at most
+  `FOOD_LENS_MAX_CONCURRENT` (2) requests at once, lets `FOOD_LENS_MAX_WAITING` (8) more wait, and answers the rest
+  at once with **503 `SERVER_BUSY`** (`Retry-After`). After the fix: 8 simultaneous requests ≤ 0.17 s; 24
+  simultaneous 2048×1536 requests: 10 × 200 and 14 × 503 in 0.5 s, process RSS peak 569 MB. This is a local
+  measurement, not the production server.
 - Upload validation (in memory, like Face Blur): raw body (no multipart spooling), ≤ 10 MB, real
   format by magic bytes (JPEG, PNG, WebP), ≤ 8000 px side and ≤ 25 MP checked from the header before
   decoding, full decode (truncated/corrupt → 422), animated images rejected. Images are never written
@@ -200,6 +212,60 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
   2026-10-09 and what each source supports; Korean is a translation (source language: English).
   Disclaimer: "Typical ingredients; not identified from your photo."
 - Latency and memory: see [Deployment](#deployment--composeyaml-dockerfile-webdockerfile-deploy).
+
+## Result levels, dietary guard and extra check
+
+**Result levels** (`app/tiers.py`; the UI shows the level as a badge):
+
+| Level | Rule | What the user sees |
+| --- | --- | --- |
+| `high` — Confident match | top-1 calibrated probability ≥ `high_threshold` | main dish and percentage, top-3 |
+| `low` — Low confidence | locked `threshold` ≤ top-1 < `high_threshold` | "not confirmed" warning, top-3 as guesses (no winner highlighted) |
+| `abstain` — Not sure | top-1 < locked `threshold` (0.462, fitted on validation) | the model does not guess: no dish, no percentage; the user can pick a dish |
+| `non_food` — Not food | the model input is flat (grey-level standard deviation < 3 of 255: blank/solid photo), **or** the extra check says "not food" | its own warning state |
+
+`high_threshold` is **0.80, chosen a priori and not tuned on the test split**; a run can lock its own value as
+`high_threshold` in `final.json` (it must lie between the locked threshold and 1). It could not be re-fitted on
+validation here (validation images are not on this machine). The table below only *describes* how the levels behave
+on the one existing test run (`test_predictions.csv`); nothing was selected from it.
+
+| Level (test, n = 806) | Photos | Share | Top-1 correct |
+| --- | ---: | ---: | ---: |
+| high | 720 | 89.3% | 97.5% |
+| low | 74 | 9.2% | 64.9% |
+| abstain | 12 | 1.5% | 33.3% (not shown to users) |
+
+`/api/evaluation` and the "How reliable is this?" section of the page show these numbers, per-class results, the
+kebab/dessert variants with a "few photos" flag (kebab test n = 56; minced skewers 13, döner/shawarma 9) and the
+limits. They are built from the loaded run's `test_metrics.json` / `test_predictions.csv`, not typed into the code.
+
+**Non-food photos are not reliably detected.** Real model, local check on non-food pictures (system pictures and
+synthetic images; not a validated benchmark): blank/solid images → `non_food` (3 of 3); a gradient → `abstain`;
+random noise and a page of text → `low` (dessert, 0.60); of 7 system pictures, 4 → `high` (dessert 0.88–0.93) and 3 →
+`low`. The model never saw non-food in training or test, so it cannot be trusted to reject it; the extra check is
+the only other signal.
+
+**Allergen and dietary guard** (`app/guard.py`, `content/allergens.json`). The user picks restrictions (Halal / no
+pork, nuts, gluten, dairy, egg, soy, sesame, fish/shellfish); after the dish (and kind) is confirmed, each typical
+ingredient line is checked. States per restriction: `Safe / No Match` (still with a "check the real ingredients"
+reminder), `Warning / Potential Match` (the matching ingredient lines are listed, as "typically contains" or "may
+contain") and `Unknown / Unverified` (a line does not say, e.g. "Other toppings, which vary"; the lines are listed).
+Every ingredient line of `ingredients.json` must be tagged (a test fails when the files drift apart). The tags are the
+author's reading of the English Wikipedia summaries, written 2026-11-19 — **a person should review them before anyone
+relies on them**; they say nothing about the photographed dish, cross-contact, or halal slaughter.
+
+**Extra check / vision fallback** (`app/fallback.py`). Only when the user presses "Run extra check" (and the server has
+`ANTHROPIC_API_KEY`): the confirmed crop is sent once to the Anthropic Messages API (official `anthropic` SDK,
+model `FOOD_LENS_FALLBACK_MODEL`, default `claude-haiku-5-5` (cheapest current model; not measured against real photos, no key was available), `FOOD_LENS_FALLBACK_TIMEOUT` 20 s, no retries). **This
+sends the photo to a third party**, which is why it is never automatic and the button says so. The reply must be a
+JSON object with a fixed vocabulary (`verdict`: food / not_food / unclear; `dish`: one of the 5 classes, `other_food`
+or null); anything else is `bad_response`, so text inside a photo cannot put free text on the page. Outcomes:
+`Fallback Used` (shown next to, never instead of, the first result; "not food" opens the Non-Food state, with a
+button back to the first result) or `Fallback Unavailable / Error` with a reason (`not_configured`, `rate_limited`,
+`busy`, `timeout`, `provider_error`, `refused`, `bad_response`, `image_too_large`, or a network/server error) while
+the earlier result stays on screen. With no key, the result shows a disabled "Run extra check" button, the
+privacy notice and the reason the feature is unavailable. Cost guard: at most `FOOD_LENS_FALLBACK_MAX_PER_MINUTE` (10) calls for the whole
+service and `FOOD_LENS_FALLBACK_MAX_CONCURRENT` (2) at once. The reply carries no calibrated probability and the UI says so.
 
 ## Frontend (batch 6) — `web/` (Next.js 16.3.8, React 19.3.0, TypeScript)
 
@@ -212,11 +278,13 @@ npm run build && FOOD_LENS_API_URL=http://127.0.0.1:8000 npm start   # proxies /
 Flow (warm light theme from `design/food-lens/`, EN default + KO saved in `localStorage` `fl.lang`):
 upload (JPEG/PNG/WebP, ≤ 10 MB, magic bytes and dimensions checked in the browser) → crop (drag the
 frame or corners, keyboard arrows, reset, rotate) → **Analyze sends exactly the confirmed crop** (JPEG,
-longest side ≤ 2048 px) → top-3 or "not sure" from the API → the user confirms (or picks) the dish →
-kebab/dessert: the user must pick the kind (nothing preselected) → typical ingredients with sources
-and "Typical ingredients; not identified from your photo".
+longest side ≤ 2048 px) → one of the four result levels from the API (optionally "Run extra check") → the user
+confirms (or picks) the dish → kebab/dessert: the user must pick the kind (nothing preselected) → typical ingredients
+with sources and "Typical ingredients; not identified from your photo", plus the restriction check (restrictions are
+remembered in `localStorage` `fl.avoid`, on this device only).
 
-- States: empty, reading, crop, analyzing, result, not sure, **MODEL_NOT_READY** (no verified model loaded:
+- States: empty, reading, crop, analyzing, confident, low confidence, not sure, not food, extra check (idle, running,
+  used, unavailable), server busy, **MODEL_NOT_READY** (no verified model loaded:
   no numbers are shown; the user can still pick a dish for its ingredients), invalid file, server and
   network errors, ingredient loading/error.
 - Async safety: every photo/crop/analysis has a sequence number and an `AbortController`; a late
@@ -253,6 +321,13 @@ FOOD_LENS_RUN_DIR_HOST=/abs/path/to/run docker compose up -d --build --wait
 deploy/nginx/check-config.sh
 FOOD_LENS_RUN_DIR_HOST=/abs/path/to/run SMOKE_IMAGE=/abs/photo.jpg SMOKE_EXPECT=pizza deploy/smoke/check.sh
 ```
+
+For a local UI check with the trained model, set `FOOD_LENS_RUN_DIR_HOST` to the folder containing
+`best.pt`, `final.json`, and the run's other metadata. To exercise the unconfigured extra-check state,
+prefix the Compose command with `ANTHROPIC_API_KEY=`. Open <http://localhost:18775> after both services
+are healthy. Upload a JPEG, PNG, or WebP and press **Analyze**. The result tiers are listed above. A
+solid-color image exercises **Not food**. After confirming a dish, select restrictions such as
+**Halal / no pork**, **Gluten**, and **Nuts** in **Check against my restrictions**.
 
 Measured on the **production server** (2026-10-10; the commands were run on the server by the owner and
 the output was reported back): HTTP from inside the API container to itself, synthetic JPEGs, 8 warm-up
@@ -321,8 +396,13 @@ few local photos through the live app and the local stack.
 
 - **Five classes only.** Any other dish is forced into one of them.
 - **Non-food or out-of-distribution images are not reliably rejected.** The "not sure" threshold was
-  fitted on in-distribution val images; a photo of a text page was classified as dessert at 48%, above
-  the threshold (local check). There is no "not food" detector.
+  fitted on in-distribution val images. Only blank/flat photos are recognised as non-food by the model; other
+  non-food pictures can land in `high` (see the measurement above). There is no trained "not food" detector.
+- **The allergen/dietary check is a hint, not a safety guarantee** (typical ingredients, hand-tagged, not reviewed
+  by a food-safety expert).
+- **The extra check depends on a paid third-party service** and needs a key; without it the feature is
+  unavailable. Its answers are not calibrated or evaluated here.
+- **Load protection is a simple in-process gate** (one worker): beyond 10 simultaneous photos, requests get 503.
 - **Crop-sensitive.** The same photo can score very differently with and without cropping to the dish
   (one hamburger test photo: 43% uncropped, 82% cropped). The app asks the user to crop.
 - **Source gap.** Kebab comes from Wikimedia Commons, the other classes from Food-101; photo style,
@@ -349,7 +429,7 @@ manifests/    generated manifests (no images)
 notebooks/    00_dataset_audit.ipynb (read-only Drive audit), 01_train_mobilenetv2.ipynb (training, Colab)
 design/       food-lens mockup (EN/KO, warm light theme)
 tests/        pytest
-app/          FastAPI inference API; content/ ingredients
+app/          FastAPI inference API (tiers, guard, fallback, evaluation, limits); content/ ingredients + allergens
 web/          Next.js frontend (own Dockerfile)
 deploy/       API requirements, Nginx templates, local smoke test
 ```

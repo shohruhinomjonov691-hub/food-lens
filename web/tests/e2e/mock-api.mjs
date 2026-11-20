@@ -7,15 +7,26 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT ?? 8000);
 const REAL_API = process.env.REAL_API ?? "http://127.0.0.1:8002";
+const BOUNDS = { threshold: 0.6, high_threshold: 0.8, non_food_reason: null, fallback_available: true };
 const SCENARIOS = {
   real: null,
-  confident: [200, { predictions: [{ class: "kebab", confidence: 0.81 }, { class: "pizza", confidence: 0.1 },
-    { class: "hot_dog", confidence: 0.05 }], uncertain: false, threshold: 0.6 }],
-  uncertain: [200, { predictions: [{ class: "dessert", confidence: 0.38 }, { class: "pizza", confidence: 0.3 },
-    { class: "hamburger", confidence: 0.2 }], uncertain: true, threshold: 0.6 }],
+  confident: [200, { ...BOUNDS, tier: "high", predictions: [{ class: "kebab", confidence: 0.81 }, { class: "pizza", confidence: 0.1 },
+    { class: "hot_dog", confidence: 0.05 }] }],
+  low: [200, { ...BOUNDS, tier: "low", predictions: [{ class: "dessert", confidence: 0.68 }, { class: "pizza", confidence: 0.2 },
+    { class: "hamburger", confidence: 0.06 }] }],
+  abstain: [200, { ...BOUNDS, tier: "abstain", predictions: [] }],
+  "non-food": [200, { ...BOUNDS, tier: "non_food", predictions: [], non_food_reason: "blank_image" }],
+  busy: [503, { code: "SERVER_BUSY", detail: "mock" }],
   "server-error": [500, { detail: "mock failure" }],
   invalid: [415, { code: "unsupported_format", detail: "mock" }],
 };
+// POST /api/fallback answers with the scenario named in FALLBACK (control: POST /__fallback {"name": "..."}).
+const FALLBACKS = {
+  used: [200, { status: "used", verdict: "food", dish: "pizza" }],
+  "not-food": [200, { status: "used", verdict: "not_food", dish: null }],
+  unavailable: [200, { status: "unavailable", reason: "timeout" }],
+};
+let fallbackScenario = "used";
 let scenario = "real";
 let last = null;
 
@@ -41,6 +52,13 @@ http.createServer(async (req, res) => {
     scenario = name;
     return json(200, { scenario });
   }
+  if (req.url === "/__fallback" && req.method === "POST") {
+    const name = JSON.parse(body.toString() || "{}").name;
+    if (!(name in FALLBACKS)) return json(400, { error: "unknown fallback scenario" });
+    fallbackScenario = name;
+    return json(200, { fallback: fallbackScenario });
+  }
+  if (req.url === "/api/fallback" && req.method === "POST") return json(...FALLBACKS[fallbackScenario]);
   if (req.url === "/__last") return json(200, last ?? {});
   if (req.url === "/api/predict" && req.method === "POST") {
     last = { bytes: body.length, sha256: createHash("sha256").update(body).digest("hex"),

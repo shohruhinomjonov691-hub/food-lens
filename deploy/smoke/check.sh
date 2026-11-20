@@ -2,9 +2,9 @@
 # Builds both images and runs them behind Nginx 1.24.0 with the production proxy snippet, with a REAL training run
 # mounted read-only. Fails unless:
 # (1) the API has loaded exactly the mounted best.pt (SHA-256 compared with the host file);
-# (2) through Nginx, / serves the app and /api/predict returns a valid top-3 for a real photo; the same request
+# (2) through Nginx, / serves the app and /api/predict returns a valid tier (top-3 for high/low) for a real photo; the same request
 #     through the web container's own /api rewrite returns the same answer;
-# (3) /api/ingredients works; oversized uploads get 413; Nginx writes no request/response temp files;
+# (3) /api/ingredients (with the dietary guard), /api/evaluation and /api/fallback (not configured) work; oversized uploads get 413; Nginx writes no request/response temp files;
 # (4) the browser bundle contains no loopback or internal API URL;
 # (5) both containers are read-only, non-root (uid 10001), healthy, unchanged, and the model mount is read-only.
 #
@@ -46,11 +46,14 @@ status=$(curl -sS -o "$work/predict.json" -w '%{http_code}' -H "Content-Type: $m
 read -r -d '' CHECK_PREDICT <<'PY' || true
 import json, sys
 body = json.loads(sys.argv[1]); expect = sys.argv[2]
-preds = body["predictions"]
-assert len(preds) == 3 and all(0.0 <= p["confidence"] <= 1.0 for p in preds), "top-3"
-assert isinstance(body["uncertain"], bool), "uncertain flag"
-assert not expect or preds[0]["class"] == expect, f"expected {expect}, got {preds[0]['class']}"
-print(" / ".join(f"{p['class']} {p['confidence']:.4f}" for p in preds), "| uncertain:", body["uncertain"])
+preds, tier = body["predictions"], body["tier"]
+assert tier in ("high", "low", "abstain", "non_food"), f"tier {tier!r}"
+if tier in ("high", "low"):
+    assert len(preds) == 3 and all(0.0 <= p["confidence"] <= 1.0 for p in preds), "top-3"
+else:
+    assert preds == [], "abstain / non_food must not carry a guess"
+assert not expect or (preds and preds[0]["class"] == expect), f"expected {expect}, got tier {tier} {preds[:1]}"
+print(" / ".join(f"{p['class']} {p['confidence']:.4f}" for p in preds) or "no guess", "| tier:", tier)
 PY
 echo -n "predict via nginx: "; py "$CHECK_PREDICT" "$(cat "$work/predict.json")" "${SMOKE_EXPECT:-}" || fail "predict result"
 
@@ -59,7 +62,7 @@ via_web=$("${compose[@]}" exec -T api python -c "import sys, urllib.request
 req = urllib.request.Request('http://web:3000/api/predict', data=sys.stdin.buffer.read(), headers={'Content-Type': sys.argv[1]})
 print(urllib.request.urlopen(req, timeout=30).read().decode())" "$mime" < "$SMOKE_IMAGE")
 py "import json, sys; a, b = json.loads(sys.argv[1]), json.loads(sys.argv[2]); \
-assert a['predictions'] == b['predictions'] and a['uncertain'] == b['uncertain'], 'rewrite path differs'; \
+assert a['predictions'] == b['predictions'] and a['tier'] == b['tier'], 'rewrite path differs'; \
 print('predict via web rewrite: identical')" "$(cat "$work/predict.json")" "$via_web" || fail "web rewrite path"
 
 # (3) Ingredients, size limits, no Nginx temp files.
@@ -67,6 +70,22 @@ status=$(curl -sS -o "$work/ingr.json" -w '%{http_code}' "$base/api/ingredients/
 [ "$status" = 200 ] || fail "ingredients returned $status"
 py "import json, sys; b = json.loads(sys.argv[1]); assert b['ingredients'] and b['disclaimer']; print('ingredients ko:', b['name'])" \
   "$(cat "$work/ingr.json")" || fail "ingredients body"
+
+# Dietary guard, evaluation and the extra check through Nginx. No ANTHROPIC_API_KEY is passed to the smoke stack, so the
+# extra check must answer "unavailable / not_configured" (HTTP 200) and nothing may be sent to a third party.
+status=$(curl -sS -o "$work/guard.json" -w '%{http_code}' "$base/api/ingredients/pizza?avoid=halal,gluten,nuts")
+[ "$status" = 200 ] || fail "ingredients with avoid returned $status"
+py "import json, sys; g = json.loads(sys.argv[1])['guard']['restrictions']; s = {r['id']: r['status'] for r in g}; \
+assert s == {'halal': 'unknown', 'gluten': 'warning', 'nuts': 'unknown'}, s; print('guard pizza:', s)" "$(cat "$work/guard.json")" \
+  || fail "guard body"
+status=$(curl -sS -o "$work/eval.json" -w '%{http_code}' "$base/api/evaluation")
+[ "$status" = 200 ] || fail "evaluation returned $status"
+py "import json, sys; e = json.loads(sys.argv[1]); assert e['n'] > 0 and len(e['per_class']) == 5 and e['thresholds']['high_from'] > e['thresholds']['abstain_below']; \
+print('evaluation: n', e['n'], 'accuracy', round(e['accuracy'], 3), 'tiers', {k: v['n'] for k, v in (e['tiers'] or {}).items()})" "$(cat "$work/eval.json")" \
+  || fail "evaluation body"
+status=$(curl -sS -o "$work/fb.json" -w '%{http_code}' -H "Content-Type: $mime" --data-binary @"$SMOKE_IMAGE" "$base/api/fallback")
+[ "$status" = 200 ] && grep -q '"reason":"not_configured"' "$work/fb.json" || fail "extra check should be not_configured without a key: $status $(cat "$work/fb.json")"
+echo "extra check without a key: $(cat "$work/fb.json")"
 
 head -c $((10 * 1024 * 1024 + 512 * 1024)) /dev/zero > "$work/big.bin"     # 10.5 MB: over the API limit
 status=$(curl -sS -o "$work/big.json" -w '%{http_code}' -H "Content-Type: image/jpeg" --data-binary @"$work/big.bin" "$base/api/predict")

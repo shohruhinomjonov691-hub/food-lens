@@ -7,7 +7,7 @@ dependencies = ["numpy", "pillow"]
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
-api = ["fastapi==0.142.4", "uvicorn==0.54.0", "torch", "torchvision"]
+api = ["fastapi==0.142.4", "uvicorn==0.54.0", "torch", "torchvision", "anthropic==1.17.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,7 +2,7 @@
 // they are not model results and must not be reported as such.
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { IngredientsOutcome, PredictOutcome } from "@/lib/api";
+import type { EvaluationOutcome, FallbackOutcome, IngredientsOutcome, PredictOutcome } from "@/lib/api";
 import FoodLens, { type Deps } from "@/components/FoodLens";
 
 function deferred<T>() {
@@ -12,18 +12,20 @@ function deferred<T>() {
 }
 
 const MOCK_OK: PredictOutcome = {
-  kind: "ok", uncertain: false, threshold: 0.6,
+  kind: "ok", tier: "high", threshold: 0.6, highThreshold: 0.8, nonFoodReason: null, fallbackAvailable: false,
   predictions: [{ dish: "kebab", confidence: 0.81 }, { dish: "pizza", confidence: 0.1 }, { dish: "hot_dog", confidence: 0.05 }],
 };
 const ingredients = (variant: string | null, item: string): IngredientsOutcome => ({
   kind: "ok", data: { dish: "kebab", variant, name: "Kebab", ingredients: [item],
     disclaimer: "Typical ingredients; not identified from your photo.", variantNote: "You choose the kind.",
-    sources: [{ url: "https://en.wikipedia.org/wiki/Shish_kebab", title: "Shish kebab — Wikipedia" }], translated: false },
+    sources: [{ url: "https://en.wikipedia.org/wiki/Shish_kebab", title: "Shish kebab — Wikipedia" }], translated: false, guard: null },
 });
 
 function setup() {
   const predicts: { blob: Blob; signal: AbortSignal; d: ReturnType<typeof deferred<PredictOutcome>> }[] = [];
-  const ingredientCalls: { args: unknown[]; signal: AbortSignal; d: ReturnType<typeof deferred<IngredientsOutcome>> }[] = [];
+  const ingredientCalls: { args: unknown[]; avoid: unknown; signal: AbortSignal; d: ReturnType<typeof deferred<IngredientsOutcome>> }[] = [];
+  const fallbackCalls: { blob: Blob; signal: AbortSignal; d: ReturnType<typeof deferred<FallbackOutcome>> }[] = [];
+  const evalCalls: { signal: AbortSignal; d: ReturnType<typeof deferred<EvaluationOutcome>> }[] = [];
   let cropN = 0;
   const deps: Deps = {
     api: {
@@ -32,9 +34,19 @@ function setup() {
         predicts.push({ blob, signal, d });
         return d.promise;
       }),
-      fetchIngredients: vi.fn((dish, variant, lang, signal: AbortSignal) => {
+      fetchIngredients: vi.fn((dish, variant, lang, avoid, signal: AbortSignal) => {
         const d = deferred<IngredientsOutcome>();
-        ingredientCalls.push({ args: [dish, variant, lang], signal, d });
+        ingredientCalls.push({ args: [dish, variant, lang], avoid, signal, d });
+        return d.promise;
+      }),
+      fallback: vi.fn((blob: Blob, signal: AbortSignal) => {
+        const d = deferred<FallbackOutcome>();
+        fallbackCalls.push({ blob, signal, d });
+        return d.promise;
+      }),
+      fetchEvaluation: vi.fn((signal: AbortSignal) => {
+        const d = deferred<EvaluationOutcome>();
+        evalCalls.push({ signal, d });
         return d.promise;
       }),
     } as unknown as Deps["api"],
@@ -45,7 +57,7 @@ function setup() {
     loadImage: vi.fn(async () => ({ naturalWidth: 800, naturalHeight: 600 }) as HTMLImageElement),
   };
   const view = render(<FoodLens deps={deps} />);
-  return { deps, predicts, ingredientCalls, view };
+  return { deps, predicts, ingredientCalls, fallbackCalls, evalCalls, view };
 }
 
 const jpeg = (name = "a.jpg") => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new Array(64).fill(1)])], name, { type: "image/jpeg" });
@@ -245,18 +257,16 @@ describe("FoodLens: feedback for a bad file after a photo was analyzed (browser 
 
 // Regressions for the Codex review of develop@6598c7a.
 describe("review fixes", () => {
-  it("1) Not sure stays Not sure after going back (API flag kept, not recomputed)", async () => {
+  it("1) Not sure stays Not sure after going back (API tier kept, not recomputed)", async () => {
     const { predicts, ingredientCalls } = setup();
     await upload();
     await analyze();
-    // Rounded numbers that would look confident if recomputed: confidence == threshold, API says uncertain.
-    await act(async () => predicts[0].d.resolve({ kind: "ok", uncertain: true, threshold: 0.6,
-      predictions: [{ dish: "pizza", confidence: 0.6 }, { dish: "kebab", confidence: 0.3 }, { dish: "hot_dog", confidence: 0.1 }] }));
-    expect(screen.getByText("Not sure")).toBeTruthy();
+    await act(async () => predicts[0].d.resolve({ ...MOCK_OK, tier: "abstain", predictions: [] }));
+    expect(screen.getByTestId("tier-badge").getAttribute("data-tier")).toBe("abstain");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Pizza/ })); });
     expect(ingredientCalls).toHaveLength(1);
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Back to results" })); });
-    expect(screen.getByText("Not sure")).toBeTruthy();
+    expect(screen.getByTestId("tier-badge").getAttribute("data-tier")).toBe("abstain");
     expect(screen.queryByText("Top matches")).toBeNull();
   });
 
@@ -322,5 +332,319 @@ describe("review fixes", () => {
     await act(async () => { fireEvent.click(screen.getByText("Adana / koobideh")); });   // the visible label
     expect((screen.getByRole("radio", { name: "Adana / koobideh" }) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByRole("button", { name: "Show ingredients" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+
+// ---------- result tiers, extra check, dietary guard, evaluation ----------
+const pred = (over: Partial<Extract<PredictOutcome, { kind: "ok" }>>): PredictOutcome => ({ ...(MOCK_OK as Extract<PredictOutcome, { kind: "ok" }>), ...over });
+const LOW_PREDS = [{ dish: "pizza" as const, confidence: 0.55 }, { dish: "kebab" as const, confidence: 0.25 }, { dish: "hot_dog" as const, confidence: 0.1 }];
+const tierOf = () => screen.getByTestId("tier-badge").getAttribute("data-tier");
+
+async function reach(outcome: PredictOutcome) {
+  const s = setup();
+  await upload();
+  await analyze();
+  await act(async () => s.predicts[0].d.resolve(outcome));
+  return s;
+}
+const click = (name: string | RegExp, role = "button") => act(async () => { fireEvent.click(screen.getByRole(role, { name })); });
+
+describe("result tiers", () => {
+  it("High / Confident: main dish and percentage", async () => {
+    await reach(MOCK_OK);
+    expect(tierOf()).toBe("high");
+    expect(screen.getByText("Confident match")).toBeTruthy();
+    expect(screen.getByText("Is this Kebab?")).toBeTruthy();
+    expect(screen.getByText("81%")).toBeTruthy();
+  });
+
+  it("Low Confidence / Uncertain: warns, shows the top 3 as unconfirmed guesses, no 'Is this …?' winner", async () => {
+    await reach(pred({ tier: "low", predictions: LOW_PREDS }));
+    expect(tierOf()).toBe("low");
+    expect(screen.getByText("Low confidence — not confirmed")).toBeTruthy();
+    expect(screen.getByText("Top 3 guesses (unconfirmed)")).toBeTruthy();
+    expect(screen.getAllByRole("listitem").filter((li) => li.classList.contains("match"))).toHaveLength(3);
+    expect(screen.getByText("55%")).toBeTruthy();
+    expect(screen.queryByText(/^Is this/)).toBeNull();
+    expect(document.querySelector(".match.top")).toBeNull();
+  });
+
+  it("Not Sure / Abstain: no guess, no percentage, no dish list from the model; the user can still pick", async () => {
+    const { ingredientCalls } = await reach(pred({ tier: "abstain", predictions: [] }));
+    expect(tierOf()).toBe("abstain");
+    expect(screen.getByText("No guess for this photo")).toBeTruthy();
+    expect(screen.queryByText(/%$/)).toBeNull();
+    expect(document.querySelector(".match")).toBeNull();
+    await click(/Pizza/);
+    expect(ingredientCalls[0].args).toEqual(["pizza", null, "en"]);
+  });
+
+  it("Non-Food / Invalid: its own warning state, with no dish picker and no numbers", async () => {
+    await reach(pred({ tier: "non_food", predictions: [], nonFoodReason: "blank_image" }));
+    expect(tierOf()).toBe("non_food");
+    expect(screen.getByText("This doesn’t look like food")).toBeTruthy();
+    expect(screen.getByText(/blank or one flat color/)).toBeTruthy();
+    expect(screen.queryByText(/%$/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pizza/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show the first result anyway" })).toBeNull();
+  });
+
+  it("server busy is its own message with a retry", async () => {
+    const s = setup();
+    await upload();
+    await analyze();
+    await act(async () => s.predicts[0].d.resolve({ kind: "busy" }));
+    expect(screen.getByText("Busy right now")).toBeTruthy();
+    await click("Try again");
+    expect(s.predicts).toHaveLength(2);
+  });
+
+  it("the tier labels are translated", async () => {
+    await reach(pred({ tier: "abstain", predictions: [] }));
+    await click("한국어");
+    expect(screen.getByText("확실하지 않음")).toBeTruthy();
+    expect(screen.getByText("이 사진은 추측하지 않아요")).toBeTruthy();
+  });
+});
+
+describe("extra check (vision fallback)", () => {
+  it("shows the privacy notice and only enables the extra check when configured", async () => {
+    const off = await reach(MOCK_OK);
+    const disabled = screen.getByRole<HTMLButtonElement>("button", { name: "Run extra check" });
+    expect(disabled.disabled).toBe(true);
+    expect(screen.getByTestId("fallback-unavailable").textContent).toContain("It is not set up on this server.");
+    expect(screen.getByText(/sends this cropped photo to Anthropic/)).toBeTruthy();
+    expect(screen.getByText("Confident match")).toBeTruthy();
+    await click("Run extra check");
+    expect(off.fallbackCalls).toHaveLength(0);
+    document.body.innerHTML = "";
+    const on = await reach(pred({ tier: "low", predictions: LOW_PREDS, fallbackAvailable: true }));
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Run extra check" }).disabled).toBe(false);
+    expect(screen.getByText(/sends this cropped photo to Anthropic/)).toBeTruthy();   // the privacy cost is stated up front
+    expect(on.fallbackCalls).toHaveLength(0);
+  });
+
+  it("Fallback Used: shows the suggestion, says if it agrees, and the user can adopt it", async () => {
+    const { fallbackCalls, ingredientCalls, deps, predicts } = await reach(pred({ tier: "low", predictions: LOW_PREDS, fallbackAvailable: true }));
+    await click("Run extra check");
+    expect(screen.getByText("Running the extra check…")).toBeTruthy();
+    expect(fallbackCalls).toHaveLength(1);
+    const sent = await (deps.crop.cropToBlob as ReturnType<typeof vi.fn>).mock.results[0].value;
+    expect(fallbackCalls[0].blob).toBe(sent);                                    // the same confirmed crop
+    expect(predicts).toHaveLength(1);
+    await act(async () => fallbackCalls[0].d.resolve({ kind: "used", verdict: "food", dish: "pizza" }));
+    expect(screen.getByText("Extra check used")).toBeTruthy();
+    expect(screen.getByText(/Suggests: Pizza/).textContent).toContain("It agrees with the first result.");
+    expect(tierOf()).toBe("low");                                                // the first result is not replaced
+    await click("Use Pizza");
+    expect(ingredientCalls[0].args).toEqual(["pizza", null, "en"]);
+  });
+
+  it("says when the extra check disagrees, finds another food, or cannot tell", async () => {
+    const { fallbackCalls } = await reach(pred({ tier: "low", predictions: LOW_PREDS, fallbackAvailable: true }));
+    await click("Run extra check");
+    await act(async () => fallbackCalls[0].d.resolve({ kind: "used", verdict: "food", dish: "kebab" }));
+    expect(screen.getByText(/Suggests: Kebab/).textContent).toContain("It differs from the first result.");
+    document.body.innerHTML = "";
+    const b = await reach(pred({ tier: "abstain", predictions: [], fallbackAvailable: true }));
+    await click("Run extra check");
+    await act(async () => b.fallbackCalls[0].d.resolve({ kind: "used", verdict: "food", dish: "other_food" }));
+    expect(screen.getByText(/not one of the 5 dishes/)).toBeTruthy();
+    document.body.innerHTML = "";
+    const c = await reach(pred({ tier: "abstain", predictions: [], fallbackAvailable: true }));
+    await click("Run extra check");
+    await act(async () => c.fallbackCalls[0].d.resolve({ kind: "used", verdict: "unclear", dish: null }));
+    expect(screen.getByText("The extra check could not tell what this is.")).toBeTruthy();
+  });
+
+  it("Fallback Unavailable / Error: the earlier result stays and the reason is shown (timeout, rate limit, network)", async () => {
+    const { fallbackCalls } = await reach(pred({ tier: "low", predictions: LOW_PREDS, fallbackAvailable: true }));
+    await click("Run extra check");
+    await act(async () => fallbackCalls[0].d.resolve({ kind: "unavailable", reason: "timeout" }));
+    expect(screen.getByTestId("fallback-unavailable").textContent).toContain("It took too long to answer.");
+    expect(screen.getByTestId("fallback-unavailable").textContent).toContain("Your earlier result is unchanged.");
+    expect(tierOf()).toBe("low");
+    expect(screen.getByText("Top 3 guesses (unconfirmed)")).toBeTruthy();       // guesses still on screen
+    expect(screen.getByText("55%")).toBeTruthy();
+    await click("Try the extra check again");
+    expect(fallbackCalls).toHaveLength(2);
+    await act(async () => fallbackCalls[1].d.resolve({ kind: "unavailable", reason: "rate_limited" }));
+    expect(screen.getByTestId("fallback-unavailable").textContent).toContain("Too many extra checks");
+    await click("Try the extra check again");
+    await act(async () => fallbackCalls[2].d.resolve({ kind: "unavailable", reason: "network" }));
+    expect(screen.getByTestId("fallback-unavailable").textContent).toContain("could not be reached");
+  });
+
+  it("'not food' from the extra check opens the Non-Food state and can go back to the first result", async () => {
+    const { fallbackCalls } = await reach(pred({ fallbackAvailable: true }));    // a confident result that is actually not food
+    await click("Run extra check");
+    await act(async () => fallbackCalls[0].d.resolve({ kind: "used", verdict: "not_food", dish: null }));
+    expect(tierOf()).toBe("non_food");
+    expect(screen.getByText(/The extra check says this photo doesn’t show food/)).toBeTruthy();
+    await click("Show the first result anyway");
+    expect(tierOf()).toBe("high");
+    expect(screen.getByText("81%")).toBeTruthy();
+  });
+
+  it("a new photo aborts the pending extra check and ignores its late answer", async () => {
+    const { fallbackCalls } = await reach(pred({ fallbackAvailable: true }));
+    await click("Run extra check");
+    await upload(jpeg("b.jpg"));
+    expect(fallbackCalls[0].signal.aborted).toBe(true);
+    await act(async () => fallbackCalls[0].d.resolve({ kind: "used", verdict: "not_food", dish: null }));
+    expect(screen.getByText("Crop to the dish")).toBeTruthy();
+    expect(screen.queryByText("This doesn’t look like food")).toBeNull();
+  });
+});
+
+describe("allergen & dietary guard", () => {
+  const guardData = (avoid: string[]): IngredientsOutcome => ({
+    kind: "ok", data: {
+      dish: "pizza", variant: null, name: "Pizza", ingredients: ["Leavened wheat-based dough", "Other toppings, which vary"],
+      disclaimer: "Typical ingredients; not identified from your photo.", variantNote: null, translated: false,
+      sources: [{ url: "https://en.wikipedia.org/wiki/Pizza", title: "Pizza — Wikipedia" }],
+      guard: avoid.length === 0 ? null : { basis: "Derived from the typical-ingredient text.", restrictions: avoid.map((id) => {
+        if (id === "gluten") return { id, label: "Gluten", status: "warning", message: "A typical ingredient may match.", note: null,
+          matches: [{ ingredient: "Leavened wheat-based dough", kind: "contains" }], unverified: [] };
+        if (id === "nuts") return { id, label: "Nuts", status: "unknown", message: "Not verified: check.", note: null,
+          matches: [], unverified: ["Other toppings, which vary"] };
+        return { id, label: "Sesame", status: "safe", message: "No listed typical ingredient matches.", note: null, matches: [], unverified: [] };
+      }) as never },
+    },
+  });
+  async function toIngredients() {
+    const s = await reach(pred({ tier: "abstain", predictions: [] }));
+    await click(/Pizza/);
+    return s;
+  }
+
+  it("asks for nothing extra until a restriction is chosen, then shows all three states with the reason", async () => {
+    const { ingredientCalls } = await toIngredients();
+    expect(ingredientCalls[0].avoid).toEqual([]);
+    await act(async () => ingredientCalls[0].d.resolve(guardData([])));
+    expect(screen.getByText("Select a restriction to check this dish against it.")).toBeTruthy();
+    expect(screen.queryByTestId("guard-gluten")).toBeNull();
+
+    await click("Gluten", "checkbox");
+    expect(ingredientCalls[1].avoid).toEqual(["gluten"]);
+    expect(ingredientCalls[0].signal.aborted).toBe(true);
+    await click("Nuts", "checkbox");
+    await click("Sesame", "checkbox");
+    expect(ingredientCalls.at(-1)?.avoid).toEqual(["nuts", "gluten", "sesame"].sort((a, b) => ["halal", "nuts", "gluten", "dairy", "egg", "soy", "sesame"].indexOf(a) - ["halal", "nuts", "gluten", "dairy", "egg", "soy", "sesame"].indexOf(b)));
+    await act(async () => ingredientCalls.at(-1)!.d.resolve(guardData(["nuts", "gluten", "sesame"])));
+
+    const gluten = screen.getByTestId("guard-gluten");
+    expect(gluten.getAttribute("data-status")).toBe("warning");
+    expect(gluten.textContent).toContain("Warning / Potential Match");
+    expect(gluten.textContent).toContain("Leavened wheat-based dough");        // which ingredient caused it
+    expect(gluten.textContent).toContain("typically contains");
+    const nuts = screen.getByTestId("guard-nuts");
+    expect(nuts.getAttribute("data-status")).toBe("unknown");
+    expect(nuts.textContent).toContain("Unknown / Unverified");
+    expect(nuts.textContent).toContain("Other toppings, which vary");
+    const sesame = screen.getByTestId("guard-sesame");
+    expect(sesame.getAttribute("data-status")).toBe("safe");
+    expect(sesame.textContent).toContain("Safe / No Match");
+    expect(sesame.textContent).toContain("No listed typical ingredient matches.");   // the reminder text accompanies "safe"
+    expect(screen.getByText("Derived from the typical-ingredient text.")).toBeTruthy();
+    expect(screen.getByTestId("disclaimer").textContent).toContain("not identified from your photo");
+  });
+
+  it("the choice is saved on this device and restored", async () => {
+    const { ingredientCalls, view } = await toIngredients();
+    await act(async () => ingredientCalls[0].d.resolve(guardData([])));
+    await click("Gluten", "checkbox");
+    expect(JSON.parse(window.localStorage.getItem("fl.avoid")!)).toEqual(["gluten"]);
+    view.unmount();
+    const again = setup();
+    await upload();
+    await analyze();
+    await act(async () => again.predicts[0].d.resolve(pred({ tier: "abstain", predictions: [] })));
+    await click(/Pizza/);
+    expect(again.ingredientCalls[0].avoid).toEqual(["gluten"]);
+    expect((screen.getByRole("checkbox", { name: "Gluten" }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("a failed check is an error with a retry, not a silent 'safe'", async () => {
+    const { ingredientCalls } = await toIngredients();
+    await act(async () => ingredientCalls[0].d.resolve(guardData([])));
+    await click("Nuts", "checkbox");
+    await act(async () => ingredientCalls[1].d.resolve({ kind: "error" }));
+    expect(screen.getByText("Ingredients could not be loaded. Please try again.")).toBeTruthy();
+    expect(screen.queryByTestId("guard-nuts")).toBeNull();
+    expect(screen.queryByText("Safe / No Match")).toBeNull();
+  });
+
+  it("works in Korean", async () => {
+    const { ingredientCalls } = await toIngredients();
+    await click("한국어");
+    await act(async () => ingredientCalls.at(-1)!.d.resolve(guardData([])));
+    expect(screen.getByRole("checkbox", { name: "할랄 / 돼지고기 제외" })).toBeTruthy();
+    expect(screen.getByText("내 제한 사항으로 확인")).toBeTruthy();
+  });
+});
+
+describe("evaluation / how reliable is this", () => {
+  const evalOk: EvaluationOutcome = {
+    kind: "ok", data: {
+      n: 806, accuracy: 0.935, macroF1: 0.928, ci: { accuracy: [0.918, 0.953], macroF1: [0.907, 0.947] },
+      perClass: [
+        { dish: "dessert", precision: 0.936, recall: 0.977, f1: 0.956, support: 300, smallN: false },
+        { dish: "hamburger", precision: 0.951, recall: 0.913, f1: 0.932, support: 150, smallN: false },
+        { dish: "hot_dog", precision: 0.892, recall: 0.88, f1: 0.886, support: 150, smallN: false },
+        { dish: "kebab", precision: 0.926, recall: 0.893, f1: 0.909, support: 56, smallN: false },
+        { dish: "pizza", precision: 0.966, recall: 0.947, f1: 0.956, support: 150, smallN: false },
+      ],
+      perVariant: [
+        { target: "kebab", variant: "minced_skewer", n: 13, recall: 0.769, smallN: true },
+        { target: "kebab", variant: "doner_shawarma", n: 9, recall: 0.889, smallN: true },
+        { target: "pizza", variant: "pizza", n: 150, recall: 0.947, smallN: false },     // not a user-chosen kind: not listed
+      ],
+      abstainBelow: 0.462, highFrom: 0.8,
+      tiers: { high: { n: 700, share: 0.868, accuracy: 0.97 }, low: { n: 94, share: 0.117, accuracy: 0.6 }, abstain: { n: 12, share: 0.015, accuracy: 0.4 } },
+      limits: ["five_classes_only", "non_food_not_evaluated", "small_variant_test"],
+    },
+  };
+  const open = () => act(async () => {
+    const d = document.querySelector("details")!;
+    d.open = true;
+    fireEvent(d, new Event("toggle"));
+  });
+
+  it("is fetched only when opened, and shows the numbers it was given, small samples and limits", async () => {
+    const { evalCalls } = setup();
+    expect(evalCalls).toHaveLength(0);
+    await open();
+    expect(evalCalls).toHaveLength(1);
+    expect(screen.getByText("Loading test results…")).toBeTruthy();
+    await act(async () => evalCalls[0].d.resolve(evalOk));
+    const ev = screen.getByTestId("evaluation");
+    expect(ev.textContent).toContain("806 held-out test photos");
+    expect(ev.textContent).toContain("93.5%");
+    expect(ev.textContent).toContain("92.8%");
+    expect(screen.getByTestId("eval-class-kebab").textContent).toContain("56");
+    expect(screen.getByTestId("eval-variant-minced_skewer").textContent).toContain("13 · few photos — not a reliable estimate");
+    expect(screen.getByTestId("eval-variant-doner_shawarma").textContent).toContain("9 · few photos");
+    expect(screen.queryByTestId("eval-variant-pizza")).toBeNull();
+    expect(screen.getByTestId("eval-tier-high").textContent).toContain("86.8%");
+    expect(screen.getByTestId("eval-tier-abstain").textContent).toContain("12");
+    expect(ev.textContent).toContain("at least 80%");                           // boundaries come from the API
+    expect(ev.textContent).toContain("below 46%");
+    expect(ev.textContent).toContain("Non-food photos were not part of the test");
+    expect(ev.textContent).toContain("Some kebab kinds have very few test photos");
+    expect(ev.textContent).toContain("were not tuned on the test photos");
+  });
+
+  it("an error shows a message (never made-up numbers) and re-opening retries", async () => {
+    const { evalCalls } = setup();
+    await open();
+    await act(async () => evalCalls[0].d.resolve({ kind: "error" }));
+    expect(screen.getByText("Test results are not available right now.")).toBeTruthy();
+    expect(screen.queryByTestId("evaluation")).toBeNull();
+    await open();
+    expect(evalCalls).toHaveLength(2);
+    await act(async () => evalCalls[1].d.resolve(evalOk));
+    expect(screen.getByTestId("evaluation")).toBeTruthy();
   });
 });

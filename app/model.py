@@ -8,8 +8,9 @@ A run folder comes from notebooks/01_train_mobilenetv2.ipynb. It is accepted onl
 - test_metrics.json is a complete notebook test result (positive n, finite metrics in [0, 1]),
 - class_mapping.json and the checkpoint use exactly food_lens.classes.CLASSES in the same order,
 - preprocessing.json uses the same cache recipe ID and model-input spec as food_lens.preprocess.
-Predictions use food_lens.preprocess.inference_tensor (the same steps as the test split), the locked
-temperature and the locked "not sure" threshold.
+Predictions use the same steps as the test split (food_lens.preprocess), the locked temperature and the locked
+"not sure" threshold. The result tier (app/tiers.py) adds a "high" boundary: final.json "high_threshold" if the run
+locked one, else app.config.DEFAULT_HIGH_THRESHOLD (never below the locked threshold).
 """
 import hashlib
 import io
@@ -21,6 +22,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from app import tiers
+from app.config import DEFAULT_HIGH_THRESHOLD, FLAT_IMAGE_STD
+from app.evaluation import build_evaluation
 from food_lens import preprocess as pp
 from food_lens.classes import CLASSES
 
@@ -40,6 +44,8 @@ class RunInfo:
     checkpoint_sha256: str
     temperature: float
     threshold: float
+    high_threshold: float = DEFAULT_HIGH_THRESHOLD
+    evaluation: dict = field(default_factory=dict)
     extra: dict = field(default_factory=dict)
     checkpoint_bytes: bytes = field(default=b"", repr=False)   # the verified bytes; dropped after loading
 
@@ -103,7 +109,8 @@ def verify_run(run_dir):
     prep = _read_json(run_dir, "preprocessing.json")
     if not os.path.exists(os.path.join(run_dir, "test_metrics.json")):
         raise ModelNotReady("the run has no test evaluation yet")
-    check_test_metrics(_read_json(run_dir, "test_metrics.json"))
+    metrics = _read_json(run_dir, "test_metrics.json")
+    check_test_metrics(metrics)
     if list(mapping.get("classes", [])) != list(CLASSES):
         raise ModelNotReady(f"class order {mapping.get('classes')} does not match {list(CLASSES)}")
     if prep.get("dataset_cache", {}).get("recipe_id") != pp.recipe_id():
@@ -125,8 +132,13 @@ def verify_run(run_dir):
     digest = hashlib.sha256(data).hexdigest()
     if digest != locked:
         raise ModelNotReady("checkpoint does not match the SHA-256 locked in final.json")
-    return RunInfo(run_dir, os.path.basename(os.path.normpath(run_dir)), digest, temperature, threshold,
-                   checkpoint_bytes=data)
+    if "high_threshold" in final:
+        high = _real_number(final["high_threshold"], "high_threshold", threshold, 1.0)
+    else:
+        high = max(DEFAULT_HIGH_THRESHOLD, threshold)
+    name = os.path.basename(os.path.normpath(run_dir))
+    return RunInfo(run_dir, name, digest, temperature, threshold, high_threshold=high,
+                   evaluation=build_evaluation(run_dir, metrics, name, threshold, high), checkpoint_bytes=data)
 
 
 class Predictor:
@@ -167,22 +179,26 @@ class Predictor:
         return True
 
     def predict(self, image_bytes):
-        """Validated image bytes -> top-3 calibrated probabilities and the 'not sure' flag."""
+        """Validated image bytes -> result tier, top-3 calibrated probabilities (high/low tiers only)."""
         if not self.ready:
             raise ModelNotReady(self.reason)
         import torch
 
-        x = torch.from_numpy(pp.inference_tensor(image_bytes))[None]
+        info = self.info
+        base = {"threshold": round(info.threshold, 4), "high_threshold": round(info.high_threshold, 4),
+                "confidence": "calibrated probability (temperature scaling fitted on the validation split)"}
+        arr = pp.inference_tensor(image_bytes)
+        if tiers.is_flat(arr, std_limit=FLAT_IMAGE_STD):
+            # Nothing to recognise in a blank image: no model call, no guess.
+            return {**base, "tier": tiers.NON_FOOD, "non_food_reason": tiers.BLANK_IMAGE, "predictions": []}
+        x = torch.from_numpy(arr)[None]
         with torch.no_grad():
             logits = self.model(x).double().numpy()[0]
-        z = logits / self.info.temperature
+        z = logits / info.temperature
         probs = np.exp(z - z.max())
         probs /= probs.sum()
         order = np.argsort(-probs, kind="stable")[:3]
+        tier = tiers.classify(float(probs[order[0]]), info.threshold, info.high_threshold)
         top = [{"class": CLASSES[i], "confidence": round(float(probs[i]), 4)} for i in order]
-        return {
-            "predictions": top,
-            "uncertain": bool(probs[order[0]] < self.info.threshold),
-            "threshold": round(self.info.threshold, 4),
-            "confidence": "calibrated probability (temperature scaling fitted on the validation split)",
-        }
+        # Abstain: the model does not guess, so no dish and no percentage leave the server.
+        return {**base, "tier": tier, "non_food_reason": None, "predictions": [] if tier == tiers.ABSTAIN else top}
