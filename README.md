@@ -180,7 +180,7 @@ FOOD_LENS_RUN_DIR=/path/to/runs/<run> .venv/bin/uvicorn app.main:app --port 8000
 | --- | --- |
 | `GET /health` | `status`, `model_ready`, `model_reason`, loaded run + checkpoint SHA-256, thresholds, classes, variants, `restrictions`, `fallback_available` |
 | `POST /api/predict` (raw image bytes) | `tier` (`high` \| `low` \| `abstain` \| `non_food`), `predictions` (top-3 `{class, confidence}`, calibrated with the locked temperature, **empty** for `abstain` and `non_food`), `threshold`, `high_threshold`, `non_food_reason`, `fallback_available`, `variant: null` |
-| `POST /api/fallback` (raw image bytes) | extra check by a vision model, only on the user's request: `{status: "used", verdict, dish, provider, model}` or `{status: "unavailable", reason}` (HTTP 200); image errors as for predict |
+| `POST /api/fallback` (raw image bytes) | extra check by a vision model, only on the user's request: `{status: "used", verdict, dish, provider, model}` or `{status: "unavailable", reason}` (HTTP 200); image errors as for predict; the photo check runs through the same concurrency gate as `/api/predict` (503 `SERVER_BUSY` when full) |
 | `GET /api/evaluation` | test results of the loaded run: per class, per variant, 95% intervals, tier table, limits (built from the run's own files) |
 | `GET /api/ingredients/{dish}?variant=…&lang=en\|ko&avoid=halal,nuts` | typical ingredients, disclaimer, sources; kebab/dessert need the user's `variant`; `guard` is `null` without `avoid` |
 
@@ -313,7 +313,9 @@ healthcheck and json-file log rotation. They listen only on `127.0.0.1:18776` (a
   relative `/api/...` URLs. The web image's own `/api` rewrite points at `http://api:8000`, set at build
   time. The smoke test checks that no loopback or internal URL is in the browser assets.
 - `deploy/nginx/`: site templates for Nginx 1.24 (`conf.d/food-lens.conf`, no `http2`, certbot
-  webroot), proxy snippet (no temp files for uploads), `check-config.sh`, and a step-by-step README.
+  webroot), proxy snippet (no temp files for uploads), `food-lens-limits.conf` (per-IP `limit_req` / `limit_conn` for
+  `/api/`: 12 photo requests/min, 120 requests/min, 4 at once; HTTP 429 beyond that), `check-config.sh`, and a
+  step-by-step README.
 - `deploy/smoke/check.sh`: both containers plus Nginx 1.24 locally, with a real run folder and photo.
 
 ```bash

@@ -13,6 +13,7 @@ chmod 644 "$work/"*.pem
 check() {  # site file
   docker run --rm \
     -v "$PWD/food-lens-proxy.conf:/etc/nginx/snippets/food-lens-proxy.conf:ro" \
+    -v "$PWD/food-lens-limits.conf:/etc/nginx/snippets/food-lens-limits.conf:ro" \
     -v "$PWD/$1:/etc/nginx/conf.d/default.conf:ro" \
     -v "$work:/etc/letsencrypt/live/food.gotrips.cloud:ro" \
     --entrypoint nginx "$image" -t 2>&1 | grep -E "syntax is ok|test is successful|emerg|warn" || true

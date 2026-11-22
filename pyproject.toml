@@ -3,7 +3,7 @@ name = "food-lens"
 version = "0.1.0"
 description = "Food Lens: 5-class food photo classifier (dataset preparation, training, inference)"
 requires-python = ">=3.10"
-dependencies = ["numpy", "pillow"]
+dependencies = ["numpy", "pillow>=13.0.0,<14"]
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]

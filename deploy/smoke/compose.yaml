@@ -30,4 +30,5 @@ services:
       - "127.0.0.1:18085:80"
     volumes:
       - ../nginx/food-lens-proxy.conf:/etc/nginx/snippets/food-lens-proxy.conf:ro
+      - ../nginx/food-lens-limits.conf:/etc/nginx/snippets/food-lens-limits.conf:ro
       - ./nginx-smoke.conf:/etc/nginx/conf.d/default.conf:ro

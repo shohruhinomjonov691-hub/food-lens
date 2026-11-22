@@ -52,6 +52,7 @@ to start (`FOOD_LENS_RUN_DIR_HOST` is required).
 ```bash
 sudo install -d -m 755 /var/www/food-lens-acme
 sudo install -m 644 deploy/nginx/food-lens-proxy.conf /etc/nginx/snippets/food-lens-proxy.conf
+sudo install -m 644 deploy/nginx/food-lens-limits.conf /etc/nginx/snippets/food-lens-limits.conf
 sudo install -m 644 deploy/nginx/food-lens.bootstrap.conf.example /etc/nginx/conf.d/food-lens.conf
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot certonly --webroot -w /var/www/food-lens-acme -d food.gotrips.cloud \
@@ -75,6 +76,39 @@ verifying.
 
 For an access-restricted launch, create `/etc/nginx/food-lens.htpasswd` on the server (never in git) and
 uncomment the two `auth_basic` lines before installing.
+
+## Request limits (`/api/` only)
+
+`deploy/nginx/food-lens-limits.conf` (installed as `/etc/nginx/snippets/food-lens-limits.conf` and included at the top of
+`conf.d/food-lens.conf`, outside any server block) defines three zones; `food-lens-proxy.conf` applies them to
+`location /api/`. All limits are per client IP:
+
+| Limit | Value | Meaning |
+| --- | --- | --- |
+| `food_lens_upload` (`limit_req`) | 12 requests/minute, burst 10 | only POST requests: photo analysis and the extra check, the costly ones |
+| `food_lens_api` (`limit_req`) | 120 requests/minute, burst 30 | every `/api/` request (ingredients, health, ...) |
+| `food_lens_conn` (`limit_conn`) | 4 simultaneous requests | also stops many slow uploads (request buffering is off) |
+
+Over a limit Nginx answers **HTTP 429** (the API's own "busy" answer stays 503 `SERVER_BUSY`; the page shows its generic
+server-error message for a 429). The API still protects itself behind this (at most 2 photos decoded or analysed at once,
+8 waiting, then 503), and the extra check keeps its own service-wide limit of 10 per minute. The pages and `/_next/static/`
+are not limited here.
+
+Limits are per `$binary_remote_addr`. This Nginx is the edge, so that is the real visitor. If a CDN or another proxy is
+put in front, configure `ngx_http_realip_module` first, or all visitors share one limit. Visitors behind one NAT also
+share one limit; raise the rates in `food-lens-limits.conf` if that matters. Other sites in `conf.d/` are not affected:
+the zone and variable names all start with `food_lens_`. The 429s appear in `/var/log/nginx/food-lens.error.log`
+(`limiting requests` / `limiting connections`, level warn).
+
+Try it after installing (each line counts against your own address, so wait a minute afterwards):
+
+```bash
+for i in $(seq 1 60); do curl -s -o /dev/null -w '%{http_code}\n' https://food.gotrips.cloud/api/ingredients/pizza; done | sort | uniq -c
+# expect a mix of 200 and 429 (about 31 allowed at once, then roughly 2 per second)
+```
+
+Static checks of these files run in `tests/test_deploy_config.py`; `deploy/nginx/check-config.sh` runs `nginx -t` with
+Nginx 1.24.0 in Docker, and `deploy/smoke/check.sh` runs the same zones in front of the containers.
 
 ## 4. Verify
 
@@ -100,6 +134,6 @@ The other sites are unaffected. The certificate, checkout, run folder and images
 
 ## Local checks (no server needed)
 
-- `deploy/nginx/check-config.sh` — `nginx -t` with Nginx 1.24.0 in Docker for both site files.
+- `deploy/nginx/check-config.sh` — `nginx -t` with Nginx 1.24.0 in Docker for both site files (with the proxy and limits snippets).
 - `deploy/smoke/check.sh` — both containers with a real run folder mounted read-only, behind Nginx 1.24.0 with the
   production snippet (see the script header for what it checks).

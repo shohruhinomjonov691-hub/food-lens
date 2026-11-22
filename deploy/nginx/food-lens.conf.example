@@ -3,6 +3,9 @@
 # site on that address:port, and the existing sites on this server serve HTTP/1.1.
 # The containers run from compose.yaml on 127.0.0.1:18775 (web) and 127.0.0.1:18776 (api).
 
+# Request-rate and connection limits for /api/ (http-level zones; used by the proxy snippet below).
+include /etc/nginx/snippets/food-lens-limits.conf;
+
 upstream food_lens_web {
     server 127.0.0.1:18775;   # keep in sync with FOOD_LENS_WEB_PORT in compose.yaml
     keepalive 8;

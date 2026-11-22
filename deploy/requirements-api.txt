@@ -6,6 +6,6 @@ torchvision==0.29.1+cpu
 fastapi==0.142.4
 uvicorn==0.54.0
 numpy==2.5.3
-pillow==12.3.0
+pillow==13.0.0
 # Optional extra analysis (app/fallback.py); used only when ANTHROPIC_API_KEY is set.
 anthropic==1.17.0

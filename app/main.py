@@ -140,7 +140,10 @@ async def fallback(request: Request):
     """Extra analysis, only when the user asks. A provider problem is a normal answer (status "unavailable"), so the
     page keeps the earlier result; a bad image is still a client error."""
     data = await read_limited_body(request)
-    fmt = await run_in_threadpool(validate_image, data)
+    # Decoding a photo (up to 25 Mpx) costs the same CPU and memory here as in /api/predict, so it goes through the same
+    # gate: a few at once, a short queue, then 503. Only the decode holds a slot; waiting for the provider does not.
+    async with PREDICT_GATE:
+        fmt = await run_in_threadpool(validate_image, data)
     return await FALLBACK.analyze(data, fmt)
 
 

@@ -255,3 +255,76 @@ def test_the_request_uses_the_configured_model():
     assert a.model == config.FALLBACK_MODEL
     run(a)
     assert a.client.calls[0]["model"] == config.FALLBACK_MODEL
+
+
+# ---------- the photo check of /api/fallback shares the inference gate (CPU / memory protection) ----------
+
+class StubRequest:
+    """Just enough of a Starlette request for read_limited_body."""
+
+    def __init__(self, data):
+        self.headers, self._data = {"content-length": str(len(data))}, data
+
+    async def stream(self):
+        yield self._data
+
+
+def test_parallel_fallback_uploads_cannot_exceed_the_gate(monkeypatch):
+    import threading
+    import time
+
+    state = {"now": 0, "peak": 0}
+    lock = threading.Lock()
+
+    def slow_validate(data):               # stands in for decoding a big photo
+        with lock:
+            state["now"] += 1
+            state["peak"] = max(state["peak"], state["now"])
+        time.sleep(0.15)
+        with lock:
+            state["now"] -= 1
+        return "JPEG"
+
+    gate = limits.ConcurrencyGate(max_running=2, max_waiting=3)
+    monkeypatch.setattr(api, "PREDICT_GATE", gate)
+    monkeypatch.setattr(api, "validate_image", slow_validate)
+    monkeypatch.setattr(api, "FALLBACK", fb.FallbackAnalyzer(None))        # not configured: a normal answer
+
+    async def scenario():
+        calls = [api.fallback(StubRequest(b"\xff\xd8\xff data")) for _ in range(10)]
+        return await asyncio.gather(*calls, return_exceptions=True)
+
+    results = asyncio.run(scenario())
+    refused = [r for r in results if isinstance(r, limits.Busy)]
+    answered = [r for r in results if isinstance(r, dict)]
+    assert state["peak"] <= 2                                   # never more than the gate allows
+    assert len(answered) == 5 and len(refused) == 5             # 2 running + 3 waiting; the rest refused at once
+    assert all(r == {"status": "unavailable", "reason": "not_configured"} for r in answered)
+    assert gate.running == 0 and gate.waiting == 0              # every slot is released
+
+
+def test_endpoint_answers_503_busy_when_the_gate_is_full_and_never_calls_the_provider(client, monkeypatch):
+    gate = limits.ConcurrencyGate(1, 0)
+    gate.running = 1
+    monkeypatch.setattr(api, "PREDICT_GATE", gate)
+    fake = analyzer(answer('{"verdict": "food", "dish": "pizza"}'))
+    monkeypatch.setattr(api, "FALLBACK", fake)
+    r = client.post("/api/fallback", content=image_bytes())
+    assert r.status_code == 503 and r.json()["code"] == "SERVER_BUSY" and r.headers["retry-after"]
+    assert fake.client.calls == []
+    gate.running = 0
+    assert client.post("/api/fallback", content=image_bytes()).json()["status"] == "used"
+
+
+def test_waiting_for_the_provider_does_not_hold_a_gate_slot(monkeypatch):
+    gate = limits.ConcurrencyGate(1, 0)
+    monkeypatch.setattr(api, "PREDICT_GATE", gate)
+    seen = {}
+
+    async def provider():
+        seen["running_during_provider_call"] = gate.running
+        return answer('{"verdict": "food", "dish": "pizza"}')
+
+    monkeypatch.setattr(api, "FALLBACK", analyzer(provider))
+    out = asyncio.run(api.fallback(StubRequest(image_bytes())))
+    assert out["status"] == "used" and seen["running_during_provider_call"] == 0
